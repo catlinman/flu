@@ -1,16 +1,20 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+#![allow(improper_ctypes)]
 
 use libc::{c_int, c_char, c_void, c_double, size_t};
 use std::ptr;
 
+#[macro_export]
 macro_rules! c_str {
-    ($str:expr) => (concat!($str, '\0').as_ptr() as *const libc::c_char)
+    ($str:expr) => (concat!($str, '\0').as_ptr() as *const i8)
 }
 
 pub const LUA_REGISTRYINDEX: c_int = -10000;
 pub const LUA_ENVIRONINDEX: c_int = -10001;
 pub const LUA_GLOBALSINDEX: c_int = -10002;
+
+pub const LUA_MULTRET: c_int = -1;
 
 pub const LUA_TNONE: c_int = -1;
 pub const LUA_TNIL: c_int = 0;
@@ -28,6 +32,9 @@ pub type lua_Integer = c_double;
 
 #[repr(C)]
 pub struct lua_State;
+
+#[repr(C)]
+pub struct ZIO;
 
 #[repr(C)]
 pub struct lua_Debug {
@@ -86,8 +93,8 @@ extern "C" {
     pub fn lua_rawequal(L: *mut lua_State, idx1: c_int, idx2: c_int) -> c_int;
     pub fn lua_lessthan(L: *mut lua_State, idx1: c_int, idx2: c_int) -> c_int;
 
-    pub fn lua_tonumber(L: *mut lua_State, idx: c_int, isnum: *mut c_int) -> lua_Number;
-    pub fn lua_tointeger(L: *mut lua_State, idx: c_int, isnum: *mut c_int) -> lua_Integer;
+    pub fn lua_tonumber(L: *mut lua_State, idx: c_int) -> lua_Number;
+    pub fn lua_tointeger(L: *mut lua_State, idx: c_int) -> lua_Integer;
     pub fn lua_toboolean(L: *mut lua_State, idx: c_int) -> c_int;
     pub fn lua_tolstring(L: *mut lua_State, idx: c_int, len: *mut size_t) -> *const c_char;
     pub fn lua_objlen(L: *mut lua_State, idx: c_int) -> size_t;
@@ -176,6 +183,8 @@ extern "C" {
     pub fn luaopen_debug(L: *mut lua_State) -> c_int;
     pub fn luaopen_package(L: *mut lua_State) -> c_int;
     pub fn luaL_openlibs(L: *mut lua_State);
+
+    pub fn luaL_loadstring(L: *mut lua_State, s: *const c_char);
 
 }
 
