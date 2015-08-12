@@ -4,7 +4,7 @@ extern crate flu;
 use flu::ffi;
 
 #[test]
-fn load_lua() {
+fn ffi_load() {
     unsafe {
         let lua = ffi::luaL_newstate();
 

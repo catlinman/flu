@@ -74,10 +74,10 @@ impl LuaContext {
         Ok(())
     }*/ 
 
-    /*pub fn read<T>(&mut self) -> T
+    pub fn read<T>(&mut self, idx: i32) -> T
                    where T: Read {
-
-    }*/
+        T::read(self, idx)
+    }
 
     pub fn push<T>(&mut self, val: T)
                    where T: Push {
@@ -86,6 +86,10 @@ impl LuaContext {
 
     pub fn pop(&mut self, size: i32) {
         unsafe { ffi::lua_pop(self.handle, size) }
+    }
+
+    pub fn size(&self) -> i32 {
+        unsafe { ffi::lua_gettop(self.handle) }
     }
 
     // TODO: more stuff
@@ -98,4 +102,16 @@ impl Drop for LuaContext {
             unsafe { ffi::lua_close(self.handle) }
         }
     }
+}
+
+// read! creates Pop(s)
+// see: http://www.jeremyong.com/blog/2014/01/10/interfacing-lua-with-templates-in-c-plus-plus-11/
+
+#[macro_export]
+macro_rules! push {
+    ($cxt:expr, $($arg:expr),*) => (
+        $(
+            $cxt.push($arg);
+        )*
+    )
 }

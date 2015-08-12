@@ -1,9 +1,38 @@
+#[macro_use]
 extern crate flu;
 
 use flu::ffi;
 
 #[test]
-fn stack_size() {
+fn flu_stack_size() {
+    let mut cxt = flu::LuaContext::new();
+
+    push!(&mut cxt, true, false, true, false);
+
+    assert_eq!(cxt.size(), 4);
+}
+
+#[test]
+fn flu_stack_read_num() {
+    let mut cxt = flu::LuaContext::new();
+
+    push!(&mut cxt, 42f64);
+
+    assert_eq!(cxt.read::<f64>(-1), 42f64);
+}
+
+#[test]
+fn flu_stack_read_string() {
+    let mut cxt = flu::LuaContext::new();
+
+    push!(&mut cxt, "Hello world!", "Hello rust!".to_string());
+
+    assert_eq!(cxt.read::<&str>(1), "Hello world!");
+    assert_eq!(cxt.read::<String>(2), "Hello rust!");
+}
+
+#[test]
+fn ffi_stack_size() {
     unsafe {
         let lua = ffi::luaL_newstate();
 
@@ -19,7 +48,7 @@ fn stack_size() {
 }
 
 #[test]
-fn stack_string() {
+fn ffi_stack_string() {
     unsafe {
         let lua = ffi::luaL_newstate();
         
