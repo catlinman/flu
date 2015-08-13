@@ -13,6 +13,20 @@ fn flu_stack_size() {
 }
 
 #[test]
+fn flu_stack_read_int() {
+    let mut cxt = flu::LuaContext::new();
+
+    push!(&mut cxt, 42i8);
+    assert_eq!(cxt.pop_front::<i8>(), 42i8);
+
+    push!(&mut cxt, 16i16);
+    assert_eq!(cxt.pop_front::<i16>(), 16i16);
+
+    push!(&mut cxt, 101i32);
+    assert_eq!(cxt.pop_front::<i32>(), 101i32);
+}
+
+#[test]
 fn flu_stack_read_num() {
     let mut cxt = flu::LuaContext::new();
 
@@ -64,6 +78,23 @@ fn flu_stack_read_tuple() {
 
     push!(&mut cxt, true, 303f32, 604f32);
     assert_eq!(cxt.pop_front::<(bool, (f32, f32))>(), (true, (303f32, 604f32)));
+}
+
+#[test]
+fn ffi_stack_read_int() {
+    unsafe {
+        let lua = ffi::luaL_newstate();
+
+        ffi::lua_pushinteger(lua, 1);
+        ffi::lua_pushinteger(lua, 2);
+        ffi::lua_pushinteger(lua, 3);
+
+        assert_eq!(ffi::lua_tointeger(lua, -1), 3);
+        assert_eq!(ffi::lua_tointeger(lua, -2), 2);
+        assert_eq!(ffi::lua_tointeger(lua, -3), 1);
+
+        ffi::lua_close(lua);
+    }
 }
 
 #[test]

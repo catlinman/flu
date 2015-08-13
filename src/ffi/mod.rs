@@ -3,6 +3,7 @@
 #![allow(improper_ctypes)]
 
 use libc::{c_int, c_char, c_void, c_double, size_t};
+use libc::types::os::arch::c95::ptrdiff_t;
 use std::ptr;
 
 #[macro_export]
@@ -28,7 +29,7 @@ pub const LUA_TUSERDATA: c_int = 7;
 pub const LUA_TTHREAD: c_int = 8;
 
 pub type lua_Number = c_double;
-pub type lua_Integer = c_double;
+pub type lua_Integer = ptrdiff_t;
 
 #[repr(C)]
 pub struct lua_State;

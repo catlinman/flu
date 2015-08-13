@@ -24,6 +24,7 @@ macro_rules! integer_push {
     ($ty:ident) => (
         impl Push for $ty {
             fn push(self, cxt: &mut LuaContext) {
+                println!("{:?}", self as ffi::lua_Integer);
                 unsafe { ffi::lua_pushinteger(cxt.handle, self as ffi::lua_Integer) }
             }
         }
@@ -33,6 +34,10 @@ macro_rules! integer_push {
 integer_push!(i8);
 integer_push!(i16);
 integer_push!(i32);
+
+integer_push!(u8);
+integer_push!(u16);
+integer_push!(u32);
 
 macro_rules! number_push {
     ($ty:ident) => (
