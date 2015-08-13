@@ -86,8 +86,18 @@ impl LuaContext {
         val.push(self);
     }
 
-    pub fn pop(&mut self, size: i32) {
-        unsafe { ffi::lua_pop(self.handle, size) }
+    pub fn pop_front<T>(&mut self) -> T
+                        where T: Read {
+        let ret = T::read(self, -1);
+        unsafe { ffi::lua_pop(self.handle, T::size()) };
+        ret
+    }
+
+    pub fn pop_bottom<T>(&mut self) -> T
+                        where T: Read {
+        let ret = T::read(self, 1);
+        unsafe { ffi::lua_remove(self.handle, T::size()) };
+        ret
     }
 
     pub fn size(&self) -> i32 {

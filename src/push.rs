@@ -56,7 +56,7 @@ impl Push for &'static str {
 impl Push for String {
     fn push(self, cxt: &mut LuaContext) {
         let value = CString::new(&self[..]).unwrap();
-        unsafe { ffi::lua_pushlstring(cxt.handle, value.as_ptr(), self.len() as u64 + 1) };
+        unsafe { ffi::lua_pushlstring(cxt.handle, value.as_ptr(), self.len() as u64) };
     }
 }
 

@@ -17,8 +17,16 @@ fn flu_stack_read_num() {
     let mut cxt = flu::LuaContext::new();
 
     push!(&mut cxt, 42f64);
+    assert_eq!(cxt.pop_front::<f64>(), 42f64);
 
-    assert_eq!(cxt.read::<f64>(-1), 42f64);
+    push!(&mut cxt, 16f32);
+    assert_eq!(cxt.pop_front::<f32>(), 16f32);
+
+    push!(&mut cxt, 101f32);
+    assert_eq!(cxt.pop_front::<f64>(), 101f64);
+
+    push!(&mut cxt, 99f64);
+    assert_eq!(cxt.pop_front::<f32>(), 99f32);
 }
 
 #[test]
@@ -27,8 +35,8 @@ fn flu_stack_read_string() {
 
     push!(&mut cxt, "Hello world!", "Hello rust!".to_string());
 
-    assert_eq!(cxt.read::<&str>(1), "Hello world!");
-    assert_eq!(cxt.read::<String>(2), "Hello rust!");
+    assert_eq!(cxt.pop_front::<String>(), "Hello rust!");
+    assert_eq!(cxt.pop_front::<&str>(), "Hello world!");
 }
 
 #[test]
@@ -37,8 +45,25 @@ fn flu_stack_read_optional() {
 
     push!(&mut cxt, "Hello world!", flu::nil);
 
-    assert_eq!(cxt.read::<Option<&str>>(1), Some("Hello world!"));
-    assert_eq!(cxt.read::<Option<String>>(2), None);
+    assert_eq!(cxt.pop_front::<Option<String>>(), None);
+    assert_eq!(cxt.pop_front::<Option<&str>>(), Some("Hello world!"));
+
+    push!(&mut cxt, flu::nil, 5f64, flu::nil);
+    assert_eq!(cxt.pop_front::<(Option<f64>, Option<f64>, Option<f64>)>(), (None, Some(5f64), None));
+}
+
+#[test]
+fn flu_stack_read_tuple() {
+    let mut cxt = flu::LuaContext::new();
+
+    push!(&mut cxt, 1f64, 2f64);
+    assert_eq!(cxt.pop_front::<(f64, f64)>(), (1f64, 2f64));
+
+    push!(&mut cxt, "lululua", flu::nil);
+    assert_eq!(cxt.pop_front::<(String, Option<&str>)>(), ("lululua".to_string(), None));
+
+    push!(&mut cxt, true, 303f32, 604f32);
+    assert_eq!(cxt.pop_front::<(bool, (f32, f32))>(), (true, (303f32, 604f32)));
 }
 
 #[test]
