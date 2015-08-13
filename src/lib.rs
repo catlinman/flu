@@ -10,6 +10,8 @@ use read::Read;
 pub struct LuaTable;
 pub struct LuaFunction;
 
+pub struct nil;
+
 pub enum LuaType {
     Number,
     String,

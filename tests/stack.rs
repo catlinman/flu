@@ -32,6 +32,16 @@ fn flu_stack_read_string() {
 }
 
 #[test]
+fn flu_stack_read_optional() {
+    let mut cxt = flu::LuaContext::new();
+
+    push!(&mut cxt, "Hello world!", flu::nil);
+
+    assert_eq!(cxt.read::<Option<&str>>(1), Some("Hello world!"));
+    assert_eq!(cxt.read::<Option<String>>(2), None);
+}
+
+#[test]
 fn ffi_stack_size() {
     unsafe {
         let lua = ffi::luaL_newstate();

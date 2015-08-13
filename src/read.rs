@@ -62,3 +62,22 @@ impl Read for String {
         }
     }
 }
+
+impl<T> Read for Option<T> where T: Read {
+    fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+        unsafe {
+            match ffi::lua_isnil(cxt.handle, idx) {
+                false => Some(T::read(cxt, idx)),
+                true  => None,
+            }
+        }
+    }
+}
+
+/*impl<T> Read for (T) where T: Read {
+    fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+        unsafe {
+            
+        }
+    }
+}*/

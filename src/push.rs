@@ -1,10 +1,17 @@
 use ffi;
 use LuaContext;
+use nil;
 
 use std::ffi::CString;
 
 pub trait Push {
     fn push(self, cxt: &mut LuaContext);
+}
+
+impl Push for nil {
+    fn push(self, cxt: &mut LuaContext) {
+        unsafe { ffi::lua_pushnil(cxt.handle) }
+    }
 }
 
 impl Push for bool {
