@@ -10,7 +10,6 @@ use std::mem;
 pub trait Read<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self;
     fn check(cxt: &'a LuaContext, idx: i32) -> bool;
-    fn size() -> i32;
 }
 
 impl<'a> Read<'a> for bool {
@@ -20,10 +19,6 @@ impl<'a> Read<'a> for bool {
 
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
         unsafe { ffi::lua_isboolean(cxt.handle, idx) }
-    }
-
-    fn size() -> i32 {
-        1
     }
 }
 
@@ -36,10 +31,6 @@ macro_rules! integer_read {
 
             fn check(cxt: &'a LuaContext, idx: i32) -> bool {
                 unsafe { ffi::lua_isnumber(cxt.handle, idx) > 0 }
-            }
-
-            fn size() -> i32 {
-                1
             }
         }
     )
@@ -58,10 +49,6 @@ macro_rules! number_read {
 
             fn check(cxt: &'a LuaContext, idx: i32) -> bool {
                 unsafe { ffi::lua_isnumber(cxt.handle, idx) > 0 }
-            }
-
-            fn size() -> i32 {
-                1
             }
         }
     )
@@ -85,10 +72,6 @@ impl<'a, 'b> Read<'a> for &'b str {
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
         unsafe { ffi::lua_isstring(cxt.handle, idx) > 0}
     }
-
-    fn size() -> i32 {
-        1
-    }
 }
 
 impl<'a> Read<'a> for String {
@@ -106,10 +89,6 @@ impl<'a> Read<'a> for String {
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
         unsafe { ffi::lua_isstring(cxt.handle, idx) > 0 }
     }
-
-    fn size() -> i32 {
-        1
-    }
 }
 
 impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
@@ -119,6 +98,7 @@ impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
 
             match ffi::lua_isnil(cxt.handle, idx) {
                 true => {
+                    cxt.pop_discard(-1);
                     LuaRef {
                         cxt: cxt,
                         key: -1,
@@ -127,7 +107,7 @@ impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
                 }
                 false => {
                     ffi::lua_rawgeti(cxt.handle, t, ffi::FREELIST_REF);
-                    let r = match cxt.pop_front::<i32>() {
+                    let r = match cxt.pop::<i32>() {
                         0 => {
                             ffi::lua_objlen(cxt.handle, t) as i32 + 1
                         },
@@ -138,7 +118,7 @@ impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
                         }
                     };
                     ffi::lua_rawseti(cxt.handle, t, r);
-                    
+
                     LuaRef {
                         cxt: cxt,
                         key: r,
@@ -152,17 +132,13 @@ impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
         true
     }
-
-    fn size() -> i32 {
-        0
-    }
 }
 
 impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             match ffi::lua_isnil(cxt.handle, idx) {
-                false => Some(T::read(cxt, idx)),
+                false => Some(cxt.peek::<T>(-1)),
                 true  => None,
             }
         }
@@ -171,28 +147,20 @@ impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
         T::check(cxt, idx) || unsafe { ffi::lua_isnil(cxt.handle, idx) }
     }
-
-    fn size() -> i32 {
-        T::size()
-    }
 }
 
-macro_rules! tuple_read {
+/*macro_rules! tuple_read {
     ($($name:ident)+) => (
         impl<'a, $($name: Read<'a>),*> Read<'a> for ($($name,)*) {
             fn read(cxt: &'a LuaContext, idx: i32) -> Self {
                 (
-                    $(cxt.pop_bottom::<$name>(),)*
+                    $(cxt.remove::<$name>(idx),)*
                 )
             }
 
             fn check(cxt: &'a LuaContext, idx: i32) -> bool {
                 let mut idx = 0;
                 true $(&& $name::check(cxt, { idx += 1; idx }))*
-            }
-
-            fn size() -> i32 {
-                0
             }
         }
     );
@@ -209,4 +177,4 @@ tuple_read!(A B C D E F G H);
 tuple_read!(A B C D E F G H I);
 tuple_read!(A B C D E F G H I J);
 tuple_read!(A B C D E F G H I J K);
-tuple_read!(A B C D E F G H I J K L);
+tuple_read!(A B C D E F G H I J K L); */

@@ -3,9 +3,11 @@ extern crate libc;
 pub mod ffi;
 pub mod push;
 pub mod read;
+pub mod size;
 
 use push::Push;
 use read::Read;
+use size::Size;
 
 use std::marker::PhantomData;
 
@@ -55,8 +57,7 @@ impl LuaContext {
     pub fn eval<T>(&mut self, code: &str) -> T {
         unimplemented!()
     }*/
-
-    pub fn read<'a, T>(&'a self, idx: i32) -> T
+    pub fn peek<'a, T>(&'a self, idx: i32) -> T
                    where T: Read<'a> {
         T::read(self, idx)
     }
@@ -66,18 +67,30 @@ impl LuaContext {
         val.push(self);
     }
 
-    pub fn pop_front<'a, T>(&'a self) -> T
-                        where T: Read<'a> {
+    pub fn pop<'a, T>(&'a self) -> T
+                      where T: Read<'a> + Size {
         let ret = T::read(self, -1);
-        unsafe { ffi::lua_pop(self.handle, T::size()) };
+        if T::size() > 0 {
+            self.pop_discard(1);
+        }
         ret
     }
 
-    pub fn pop_bottom<'a, T>(&'a self) -> T
-                        where T: Read<'a> {
-        let ret = T::read(self, 1);
-        unsafe { ffi::lua_remove(self.handle, T::size()) };
+    pub fn pop_discard(&self, idx: i32) {
+        unsafe { ffi::lua_pop(self.handle, idx) };
+    }
+
+    pub fn remove<'a, T>(&'a self, idx: i32) -> T
+                        where T: Read<'a> + Size {
+        let ret = T::read(self, idx);
+        if T::size() > 0 {
+            self.remove_discard(idx);
+        }
         ret
+    }
+
+    pub fn remove_discard(&self, idx: i32) {
+        unsafe { ffi::lua_remove(self.handle, idx) };    
     }
 
     pub fn size(&self) -> i32 {
