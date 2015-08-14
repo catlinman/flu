@@ -5,49 +5,49 @@ use flu::ffi;
 
 #[test]
 fn flu_stack_size() {
-    let mut cxt = flu::LuaContext::new();
+    let cxt = flu::LuaContext::new();
 
-    push!(&mut cxt, true, false, true, false);
+    push!(&cxt, true, false, true, false);
 
     assert_eq!(cxt.size(), 4);
 }
 
 #[test]
 fn flu_stack_read_int() {
-    let mut cxt = flu::LuaContext::new();
+    let cxt = flu::LuaContext::new();
 
-    push!(&mut cxt, 42i8);
+    push!(&cxt, 42i8);
     assert_eq!(cxt.pop_front::<i8>(), 42i8);
 
-    push!(&mut cxt, 16i16);
+    push!(&cxt, 16i16);
     assert_eq!(cxt.pop_front::<i16>(), 16i16);
 
-    push!(&mut cxt, 101i32);
+    push!(&cxt, 101i32);
     assert_eq!(cxt.pop_front::<i32>(), 101i32);
 }
 
 #[test]
 fn flu_stack_read_num() {
-    let mut cxt = flu::LuaContext::new();
+    let cxt = flu::LuaContext::new();
 
-    push!(&mut cxt, 42f64);
+    push!(&cxt, 42f64);
     assert_eq!(cxt.pop_front::<f64>(), 42f64);
 
-    push!(&mut cxt, 16f32);
+    push!(&cxt, 16f32);
     assert_eq!(cxt.pop_front::<f32>(), 16f32);
 
-    push!(&mut cxt, 101f32);
+    push!(&cxt, 101f32);
     assert_eq!(cxt.pop_front::<f64>(), 101f64);
 
-    push!(&mut cxt, 99f64);
+    push!(&cxt, 99f64);
     assert_eq!(cxt.pop_front::<f32>(), 99f32);
 }
 
 #[test]
 fn flu_stack_read_string() {
-    let mut cxt = flu::LuaContext::new();
+    let cxt = flu::LuaContext::new();
 
-    push!(&mut cxt, "Hello world!", "Hello rust!".to_string());
+    push!(&cxt, "Hello world!", "Hello rust!".to_string());
 
     assert_eq!(cxt.pop_front::<String>(), "Hello rust!");
     assert_eq!(cxt.pop_front::<&str>(), "Hello world!");
@@ -55,28 +55,42 @@ fn flu_stack_read_string() {
 
 #[test]
 fn flu_stack_read_optional() {
-    let mut cxt = flu::LuaContext::new();
+    let cxt = flu::LuaContext::new();
 
-    push!(&mut cxt, "Hello world!", flu::nil);
+    push!(&cxt, "Hello world!", flu::nil);
 
     assert_eq!(cxt.pop_front::<Option<String>>(), None);
     assert_eq!(cxt.pop_front::<Option<&str>>(), Some("Hello world!"));
 
-    push!(&mut cxt, flu::nil, 5f64, flu::nil);
+    push!(&cxt, flu::nil, 5f64, flu::nil);
     assert_eq!(cxt.pop_front::<(Option<f64>, Option<f64>, Option<f64>)>(), (None, Some(5f64), None));
 }
 
 #[test]
-fn flu_stack_read_tuple() {
-    let mut cxt = flu::LuaContext::new();
+fn flu_stack_read_ref() {
+    let cxt = flu::LuaContext::new();
 
-    push!(&mut cxt, 1f64, 2f64);
+    push!(&cxt, "Hello world!");
+
+    {
+        let r = cxt.pop_front::<flu::LuaRef<&str>>();
+        cxt.push(r);
+
+        assert_eq!(cxt.pop_front::<&str>(), "Hello world!");
+    }
+}
+
+#[test]
+fn flu_stack_read_tuple() {
+    let cxt = flu::LuaContext::new();
+
+    push!(&cxt, 1f64, 2f64);
     assert_eq!(cxt.pop_front::<(f64, f64)>(), (1f64, 2f64));
 
-    push!(&mut cxt, "lululua", flu::nil);
+    push!(&cxt, "lululua", flu::nil);
     assert_eq!(cxt.pop_front::<(String, Option<&str>)>(), ("lululua".to_string(), None));
 
-    push!(&mut cxt, true, 303f32, 604f32);
+    push!(&cxt, true, 303f32, 604f32);
     assert_eq!(cxt.pop_front::<(bool, (f32, f32))>(), (true, (303f32, 604f32)));
 }
 

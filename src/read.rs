@@ -1,19 +1,25 @@
-use ffi;
 use LuaContext;
+use LuaRef;
+use ffi;
 
-use std::ffi::CString;
+use std::marker::PhantomData;
 use std::slice;
 use std::str;
 use std::mem;
 
-pub trait Read {
-    fn read(cxt: &mut LuaContext, idx: i32) -> Self;
+pub trait Read<'a> {
+    fn read(cxt: &'a LuaContext, idx: i32) -> Self;
+    fn check(cxt: &'a LuaContext, idx: i32) -> bool;
     fn size() -> i32;
 }
 
-impl Read for bool {
-    fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+impl<'a> Read<'a> for bool {
+    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe { ffi::lua_toboolean(cxt.handle, idx) > 0 }
+    }
+
+    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+        unsafe { ffi::lua_isboolean(cxt.handle, idx) }
     }
 
     fn size() -> i32 {
@@ -23,9 +29,13 @@ impl Read for bool {
 
 macro_rules! integer_read {
     ($ty:ident) => (
-        impl Read for $ty {
-            fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+        impl<'a> Read<'a> for $ty {
+            fn read(cxt: &'a LuaContext, idx: i32) -> Self {
                 unsafe { ffi::lua_tointeger(cxt.handle, idx) as Self }
+            }
+
+            fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+                unsafe { ffi::lua_isnumber(cxt.handle, idx) > 0 }
             }
 
             fn size() -> i32 {
@@ -41,9 +51,13 @@ integer_read!(i32);
 
 macro_rules! number_read {
     ($ty:ident) => (
-        impl Read for $ty {
-            fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+        impl<'a> Read<'a> for $ty {
+            fn read(cxt: &'a LuaContext, idx: i32) -> Self {
                 unsafe { ffi::lua_tonumber(cxt.handle, idx) as Self }
+            }
+
+            fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+                unsafe { ffi::lua_isnumber(cxt.handle, idx) > 0 }
             }
 
             fn size() -> i32 {
@@ -56,8 +70,8 @@ macro_rules! number_read {
 number_read!(f32);
 number_read!(f64);
 
-impl<'a> Read for &'a str {
-    fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+impl<'a, 'b> Read<'a> for &'b str {
+    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             let slice = {
                 let mut size = 0;
@@ -68,13 +82,17 @@ impl<'a> Read for &'a str {
         }
     }
 
+    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+        unsafe { ffi::lua_isstring(cxt.handle, idx) > 0}
+    }
+
     fn size() -> i32 {
         1
     }
 }
 
-impl Read for String {
-    fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+impl<'a> Read<'a> for String {
+    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             let slice = {
                 let mut size = 0;
@@ -85,13 +103,63 @@ impl Read for String {
         }
     }
 
+    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+        unsafe { ffi::lua_isstring(cxt.handle, idx) > 0 }
+    }
+
     fn size() -> i32 {
         1
     }
 }
 
-impl<T> Read for Option<T> where T: Read {
-    fn read(cxt: &mut LuaContext, idx: i32) -> Self {
+impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
+    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+        unsafe {
+            let t = ffi::LUA_REGISTRYINDEX;
+
+            match ffi::lua_isnil(cxt.handle, idx) {
+                true => {
+                    LuaRef {
+                        cxt: cxt,
+                        key: -1,
+                        _ty: PhantomData
+                    }
+                }
+                false => {
+                    ffi::lua_rawgeti(cxt.handle, t, ffi::FREELIST_REF);
+                    let r = match cxt.pop_front::<i32>() {
+                        0 => {
+                            ffi::lua_objlen(cxt.handle, t) as i32 + 1
+                        },
+                        a @ _ => {
+                            ffi::lua_rawgeti(cxt.handle, t, a);
+                            ffi::lua_rawseti(cxt.handle, t, ffi::FREELIST_REF);
+                            a
+                        }
+                    };
+                    ffi::lua_rawseti(cxt.handle, t, r);
+                    
+                    LuaRef {
+                        cxt: cxt,
+                        key: r,
+                        _ty: PhantomData
+                    }
+                }
+            }
+        }
+    }
+
+    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+        true
+    }
+
+    fn size() -> i32 {
+        0
+    }
+}
+
+impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
+    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             match ffi::lua_isnil(cxt.handle, idx) {
                 false => Some(T::read(cxt, idx)),
@@ -100,39 +168,27 @@ impl<T> Read for Option<T> where T: Read {
         }
     }
 
-    fn size() -> i32 {
-        1
+    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+        T::check(cxt, idx) || unsafe { ffi::lua_isnil(cxt.handle, idx) }
     }
-}
 
-macro_rules! count_exprs {
-    () => { 0usize };
-    ($e:expr) => { 1usize };
-    ($e:expr, $($es:expr),+ $(,)*) => { 1usize + count_exprs!($($es),*) };
-}
-
-macro_rules! tuple_read_impl {
-    (@void $name:ident $expr:expr) => ($expr);
-    (@tail $x:ident) => ();
-    (@tail $x:ident $($xs:ident)+) => { tuple_read_impl!($($xs)*) };
-
-    ($($name:ident)+) => {
-        {
-            $name::read(cxt, idx - 0 $(+ tuple_read_impl!(@void $name 1))*)
-            //tuple_read_impl!(@tail $($name)+)
-        }
+    fn size() -> i32 {
+        T::size()
     }
 }
 
 macro_rules! tuple_read {
     ($($name:ident)+) => (
-        impl<$($name: Read),*> Read for ($($name,)*) {
-            fn read(cxt: &mut LuaContext, idx: i32) -> Self {
-                //panic!("{:?}", count_exprs!($($name),*))
+        impl<'a, $($name: Read<'a>),*> Read<'a> for ($($name,)*) {
+            fn read(cxt: &'a LuaContext, idx: i32) -> Self {
                 (
                     $(cxt.pop_bottom::<$name>(),)*
-                    //tuple_read_impl!($name);
                 )
+            }
+
+            fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+                let mut idx = 0;
+                true $(&& $name::check(cxt, { idx += 1; idx }))*
             }
 
             fn size() -> i32 {
@@ -154,12 +210,3 @@ tuple_read!(A B C D E F G H I);
 tuple_read!(A B C D E F G H I J);
 tuple_read!(A B C D E F G H I J K);
 tuple_read!(A B C D E F G H I J K L);
-
-
-/*impl<T> Read for (T) where T: Read {
-    fn read(cxt: &mut LuaContext, idx: i32) -> Self {
-        unsafe {
-            
-        }
-    }
-}*/

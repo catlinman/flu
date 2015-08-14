@@ -11,6 +11,8 @@ macro_rules! c_str {
     ($str:expr) => (concat!($str, '\0').as_ptr() as *const i8)
 }
 
+pub const FREELIST_REF: c_int = 0;
+
 pub const LUA_REGISTRYINDEX: c_int = -10000;
 pub const LUA_ENVIRONINDEX: c_int = -10001;
 pub const LUA_GLOBALSINDEX: c_int = -10002;
@@ -187,6 +189,8 @@ extern "C" {
 
     pub fn luaL_loadstring(L: *mut lua_State, s: *const c_char);
 
+    pub fn luaL_ref(L: *mut lua_State, t: c_int) -> c_int;
+    pub fn luaL_unref(L: *mut lua_State, t: c_int, tref: c_int);
 }
 
 #[inline(always)]
