@@ -1,8 +1,8 @@
 use LuaContext;
+use LuaValue;
 use LuaRef;
 use ffi;
 
-use std::marker::PhantomData;
 use std::slice;
 use std::str;
 use std::mem;
@@ -91,7 +91,31 @@ impl<'a> Read<'a> for String {
     }
 }
 
-impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
+impl<'a> Read<'a> for LuaValue<'a> {
+    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+        unsafe {
+            match ffi::lua_type(cxt.handle, idx) {
+                -1 => panic!("woops!"),                         /* TNONE */
+                 0 => LuaValue::Nil,                            /* TNIL */
+                 1 => LuaValue::Bool(bool::read(cxt, idx)),     /* TBOOLEAN */
+                 2 => unimplemented!(),                         /* TLIGHTUSERDATA */
+                 3 => LuaValue::Number(f64::read(cxt, idx)),    /* TNUMBER */
+                 4 => LuaValue::String(<&str>::read(cxt, idx)), /* TSTRING */
+                 5 => unimplemented!(),                         /* TTABLE */
+                 6 => unimplemented!(),                         /* TFUNCTION */
+                 7 => unimplemented!(),                         /* TUSERDATA */
+                 8 => unimplemented!(),                         /* TTHREAD */
+                 _ => panic!("yahallo")
+            }
+        }
+    }
+
+    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+        true
+    }
+}
+
+impl<'a> Read<'a> for LuaRef<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             let t = ffi::LUA_REGISTRYINDEX;
@@ -102,7 +126,6 @@ impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
                     LuaRef {
                         cxt: cxt,
                         key: -1,
-                        _ty: PhantomData
                     }
                 }
                 false => {
@@ -122,7 +145,6 @@ impl<'a, T> Read<'a> for LuaRef<'a, T> where T: Read<'a> {
                     LuaRef {
                         cxt: cxt,
                         key: r,
-                        _ty: PhantomData
                     }
                 }
             }

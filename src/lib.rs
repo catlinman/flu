@@ -5,12 +5,15 @@ pub mod push;
 pub mod read;
 pub mod size;
 
+mod table;
+
+pub use table::Table;
+
 use push::Push;
 use read::Read;
 use size::Size;
 
-use std::marker::PhantomData;
-
+#[derive(Debug, PartialEq, Eq)]
 pub struct LuaContext {
     handle: *mut ffi::lua_State,
     owner: bool
@@ -70,7 +73,7 @@ impl LuaContext {
     pub fn pop<'a, T>(&'a self) -> T
                       where T: Read<'a> + Size {
         let ret = T::read(self, -1);
-        if T::size() > 0 {
+        if ret.size() > 0 {
             self.pop_discard(1);
         }
         ret
@@ -83,7 +86,7 @@ impl LuaContext {
     pub fn remove<'a, T>(&'a self, idx: i32) -> T
                         where T: Read<'a> + Size {
         let ret = T::read(self, idx);
-        if T::size() > 0 {
+        if ret.size() > 0 {
             self.remove_discard(idx);
         }
         ret
@@ -109,16 +112,28 @@ impl Drop for LuaContext {
     }
 }
 
-pub struct LuaRef<'a, T> {
+#[derive(Debug, PartialEq, Eq)]
+pub struct LuaRef<'a> {
     cxt: &'a LuaContext,
     key: i32,
-    _ty: PhantomData<T>
 }
 
-impl<'a, T> Drop for LuaRef<'a, T> {
+impl<'a> Drop for LuaRef<'a> {
     fn drop(&mut self) {
         unsafe { ffi::luaL_unref(self.cxt.handle, ffi::LUA_REGISTRYINDEX, self.key) }
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum LuaValue<'a> {
+    Number(f64),
+    String(&'a str),
+    Bool(bool),
+    Table(Table<'a>),
+    /*Function(LuaFunction),
+    Userdata,
+    Thread,*/
+    Nil
 }
 
 pub struct nil;

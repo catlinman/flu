@@ -1,11 +1,17 @@
 #[macro_use]
 extern crate flu;
 
+use flu::LuaContext;
+use flu::LuaValue;
+use flu::LuaRef;
+
+use flu::Table;
+
 use flu::ffi;
 
 #[test]
 fn flu_stack_size() {
-    let cxt = flu::LuaContext::new();
+    let cxt = LuaContext::new();
 
     push!(&cxt, true, false, true, false);
 
@@ -14,7 +20,7 @@ fn flu_stack_size() {
 
 #[test]
 fn flu_stack_read_int() {
-    let cxt = flu::LuaContext::new();
+    let cxt = LuaContext::new();
 
     push!(&cxt, 42i8);
     assert_eq!(cxt.pop::<i8>(), 42i8);
@@ -28,7 +34,7 @@ fn flu_stack_read_int() {
 
 #[test]
 fn flu_stack_read_num() {
-    let cxt = flu::LuaContext::new();
+    let cxt = LuaContext::new();
 
     push!(&cxt, 42f64);
     assert_eq!(cxt.pop::<f64>(), 42f64);
@@ -45,7 +51,7 @@ fn flu_stack_read_num() {
 
 #[test]
 fn flu_stack_read_string() {
-    let cxt = flu::LuaContext::new();
+    let cxt = LuaContext::new();
 
     push!(&cxt, "Hello world!", "Hello rust!".to_string());
 
@@ -55,7 +61,7 @@ fn flu_stack_read_string() {
 
 #[test]
 fn flu_stack_read_optional() {
-    let cxt = flu::LuaContext::new();
+    let cxt = LuaContext::new();
 
     push!(&cxt, "Hello world!", flu::nil);
 
@@ -67,15 +73,39 @@ fn flu_stack_read_optional() {
 }
 
 #[test]
+fn flu_stack_read_value() {
+    let cxt = LuaContext::new();
+
+    push!(&cxt, flu::nil, 45f32, "Hello world!");
+
+    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Nil);
+    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Number(45f64));
+    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::String("Hello world!"));
+}
+
+#[test]
+fn flu_stack_read_table() {
+    let cxt = LuaContext::new();
+
+    let table = Table::new(&cxt);
+
+    table.set(0, 5f64);
+    table.set("akey", "flim-flam");
+
+    assert_eq!(table.get::<f64, _>(0), 5f64);
+    assert_eq!(table.get::<&str, _>("akey"), "flim-flam");
+}
+
+#[test]
 fn flu_stack_read_ref() {
-    let cxt = flu::LuaContext::new();
+    let cxt = LuaContext::new();
 
     push!(&cxt, "Hello world!");
 
     {
         assert_eq!(cxt.size(), 1);
 
-        let r = cxt.pop::<flu::LuaRef<&str>>();
+        let r = cxt.pop::<LuaRef>();
 
         assert_eq!(cxt.size(), 0);
 
@@ -87,7 +117,7 @@ fn flu_stack_read_ref() {
 
 /*#[test]
 fn flu_stack_read_tuple() {
-    let cxt = flu::LuaContext::new();
+    let cxt = LuaContext::new();
 
     push!(&cxt, 1f64, 2f64);
     assert_eq!(cxt.pop::<(f64, f64)>(), (1f64, 2f64));

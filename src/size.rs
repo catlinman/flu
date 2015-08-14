@@ -1,16 +1,14 @@
-use LuaContext;
+use LuaValue;
 use LuaRef;
 
-use std::str;
-
 pub trait Size {
-    fn size() -> i32;
+    fn size(&self) -> i32;
 }
 
 macro_rules! type_size {
     ($ty:ident, $sz:expr) => (
         impl Size for $ty {
-            fn size() -> i32 {
+            fn size(&self) -> i32 {
                 $sz
             }
         }
@@ -29,19 +27,30 @@ type_size!(f64, 1);
 type_size!(String, 1);
 
 impl<'a> Size for &'a str {
-    fn size() -> i32 {
+    fn size(&self) -> i32 {
         1
     }
 }
 
 impl<T> Size for Option<T> where T: Size {
-    fn size() -> i32 {
-        T::size()
+    fn size(&self) -> i32 {
+        match self {
+            &Some(ref ty) => ty.size(),
+            &None => 1
+        }
     }
 }
 
-impl<'a, T> Size for LuaRef<'a, T> where T: Size {
-    fn size() -> i32 {
+impl<'a> Size for LuaRef<'a> {
+    fn size(&self) -> i32 {
         0
+    }
+}
+
+impl<'a> Size for LuaValue<'a> {
+    fn size(&self) -> i32 {
+        match self {
+            _ => 1,
+        }
     }
 }
