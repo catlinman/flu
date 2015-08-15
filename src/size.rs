@@ -1,5 +1,6 @@
 use LuaValue;
 use LuaRef;
+use nil;
 
 pub trait Size {
     fn size(&self) -> i32;
@@ -15,6 +16,7 @@ macro_rules! type_size {
     )
 }
 
+type_size!(nil, 1);
 type_size!(bool, 1);
 
 type_size!(i8, 1);

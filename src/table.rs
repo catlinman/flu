@@ -64,15 +64,14 @@ impl<'a> Table<'a> {
     }
 
     pub fn set<T, K>(&'a self, idx: K, val: T)
-                  where T: Push + Read<'a> + Size,
+                  where T: Push + Size,
                         K: LuaIndex {
         self.ptr.push(self.cxt);
         self.cxt.push(val);
 
         idx.set(self.cxt, -2);
 
-        let ret = self.cxt.pop::<T>();
-        self.cxt.pop_discard(1);
+        self.cxt.pop_discard(2);
     }
 }
 
