@@ -65,12 +65,6 @@ impl Push for String {
     }
 }
 
-impl<'a> Push for LuaRef<'a> {
-    fn push(&self, cxt: &LuaContext) {
-        unsafe { ffi::lua_rawgeti(cxt.handle, ffi::LUA_REGISTRYINDEX, self.key) }
-    }
-}
-
 impl<T> Push for Option<T> where T: Push {
     fn push(&self, cxt: &LuaContext) {
         match self {

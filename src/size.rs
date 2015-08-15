@@ -42,17 +42,3 @@ impl<T> Size for Option<T> where T: Size {
         }
     }
 }
-
-impl<'a> Size for LuaRef<'a> {
-    fn size(&self) -> i32 {
-        0
-    }
-}
-
-impl<'a> Size for LuaValue<'a> {
-    fn size(&self) -> i32 {
-        match self {
-            _ => 1,
-        }
-    }
-}
