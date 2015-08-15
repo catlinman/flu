@@ -102,3 +102,12 @@ impl Drop for LuaContext {
         }
     }
 }
+
+#[test]
+fn flu_stack_size() {
+    let cxt = LuaContext::new();
+
+    cxt.push((true, false, true, false));
+
+    assert_eq!(cxt.size(), 4);
+}

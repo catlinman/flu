@@ -1,6 +1,7 @@
 use LuaContext;
 use LuaRef;
 use ffi;
+use nil;
 
 use read::Read;
 use push::Push;
@@ -98,4 +99,19 @@ impl<'a> Size for Table<'a> {
     fn size(&self) -> i32 {
         self.ptr.size()
     }
+}
+
+#[test]
+fn flu_stack_read_table() {
+    let cxt = LuaContext::new();
+
+    let table = Table::new(&cxt);
+
+    table.set("alongkeyinatable", nil);
+    table.set(0, 5f64);
+    table.set("akey", "flim-flam");
+
+    assert_eq!(table.get::<Option<i32>, _>("alongkeyinatable"), None);
+    assert_eq!(table.get::<f64, _>(0), 5f64);
+    assert_eq!(table.get::<&str, _>("akey"), "flim-flam");
 }

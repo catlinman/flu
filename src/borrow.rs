@@ -70,3 +70,22 @@ impl<'a> Size for LuaRef<'a> {
         0
     }
 }
+
+#[test]
+fn flu_stack_read_ref() {
+    let cxt = LuaContext::new();
+
+    cxt.push("Hello world!");
+
+    {
+        assert_eq!(cxt.size(), 1);
+
+        let r = cxt.pop::<LuaRef>();
+
+        assert_eq!(cxt.size(), 0);
+
+        cxt.push(r);
+
+        assert_eq!(cxt.pop::<&str>(), "Hello world!");
+    }
+}

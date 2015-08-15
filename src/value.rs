@@ -1,6 +1,7 @@
 use LuaContext;
 use Table;
 use ffi;
+use nil;
 
 use read::Read;
 use size::Size;
@@ -47,4 +48,15 @@ impl<'a> Size for LuaValue<'a> {
             _ => 1,
         }
     }
+}
+
+#[test]
+fn flu_stack_read_value() {
+    let cxt = LuaContext::new();
+
+    cxt.push((nil, 45f32, "Hello world!"));
+
+    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Nil);
+    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Number(45f64));
+    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::String("Hello world!"));
 }

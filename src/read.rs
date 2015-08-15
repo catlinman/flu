@@ -2,6 +2,7 @@ use LuaContext;
 use LuaValue;
 use LuaRef;
 use ffi;
+use nil;
 
 use std::slice;
 use std::str;
@@ -135,3 +136,58 @@ tuple_read!(A B C D E F G H I);
 tuple_read!(A B C D E F G H I J);
 tuple_read!(A B C D E F G H I J K);
 tuple_read!(A B C D E F G H I J K L); */
+
+
+#[test]
+fn flu_stack_read_int() {
+    let cxt = LuaContext::new();
+
+    cxt.push(42i8);
+    assert_eq!(cxt.pop::<i8>(), 42i8);
+
+    cxt.push(16i16);
+    assert_eq!(cxt.pop::<i16>(), 16i16);
+
+    cxt.push(101i32);
+    assert_eq!(cxt.pop::<i32>(), 101i32);
+}
+
+#[test]
+fn flu_stack_read_num() {
+    let cxt = LuaContext::new();
+
+    cxt.push(42f64);
+    assert_eq!(cxt.pop::<f64>(), 42f64);
+
+    cxt.push(16f32);
+    assert_eq!(cxt.pop::<f32>(), 16f32);
+
+    cxt.push(101f32);
+    assert_eq!(cxt.pop::<f64>(), 101f64);
+
+    cxt.push(99f64);
+    assert_eq!(cxt.pop::<f32>(), 99f32);
+}
+
+#[test]
+fn flu_stack_read_string() {
+    let cxt = LuaContext::new();
+
+    cxt.push(("Hello world!", "Hello rust!".to_string()));
+
+    assert_eq!(cxt.pop::<String>(), "Hello rust!");
+    assert_eq!(cxt.pop::<&str>(), "Hello world!");
+}
+
+#[test]
+fn flu_stack_read_optional() {
+    let cxt = LuaContext::new();
+
+    cxt.push(("Hello world!", nil));
+
+    assert_eq!(cxt.pop::<Option<String>>(), None);
+    assert_eq!(cxt.pop::<Option<&str>>(), Some("Hello world!"));
+
+    /*push!(&cxt, flu::nil, 5f64, flu::nil);
+    assert_eq!(cxt.pop::<(Option<f64>, Option<f64>, Option<f64>)>(), (None, Some(5f64), None));*/
+}

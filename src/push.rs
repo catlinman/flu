@@ -75,3 +75,28 @@ impl<T> Push for Option<T> where T: Push {
         }
     }
 }
+
+macro_rules! tuple_push {
+    ($($name:ident)+) => (
+        impl<$($name: Push),*> Push for ($($name,)*) {
+            fn push(&self, cxt: &LuaContext) {
+                #![allow(non_snake_case)]
+                let &($(ref $name,)*) = self;
+                $($name.push(cxt);)*
+            }
+        }
+    );
+}
+
+tuple_push!(A);
+tuple_push!(A B);
+tuple_push!(A B C);
+tuple_push!(A B C D);
+tuple_push!(A B C D E);
+tuple_push!(A B C D E F);
+tuple_push!(A B C D E F G);
+tuple_push!(A B C D E F G H);
+tuple_push!(A B C D E F G H I);
+tuple_push!(A B C D E F G H I J);
+tuple_push!(A B C D E F G H I J K);
+tuple_push!(A B C D E F G H I J K L);
