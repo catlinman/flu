@@ -52,9 +52,9 @@ macro_rules! number_push {
 number_push!(f32);
 number_push!(f64);
 
-impl Push for &'static str {
+impl<'a> Push for &'a str {
     fn push(&self, cxt: &LuaContext) {
-        unsafe { ffi::lua_pushliteral(cxt.handle, *self) }
+        unsafe { ffi::lua_pushlstring(cxt.handle, self.as_ptr() as *const i8, self.len() as u64); }
     }
 }
 

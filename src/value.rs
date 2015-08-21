@@ -1,4 +1,5 @@
 use LuaContext;
+use LuaRef;
 use Table;
 use ffi;
 use nil;
@@ -28,7 +29,7 @@ impl<'a> Read<'a> for LuaValue<'a> {
                  2 => unimplemented!(),                         /* TLIGHTUSERDATA */
                  3 => LuaValue::Number(f64::read(cxt, idx)),    /* TNUMBER */
                  4 => LuaValue::String(<&str>::read(cxt, idx)), /* TSTRING */
-                 5 => unimplemented!(),                         /* TTABLE */
+                 5 => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),                         /* TTABLE */
                  6 => unimplemented!(),                         /* TFUNCTION */
                  7 => unimplemented!(),                         /* TUSERDATA */
                  8 => unimplemented!(),                         /* TTHREAD */

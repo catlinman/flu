@@ -15,8 +15,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Table<'a> {
-    cxt: &'a LuaContext,
-    ptr: LuaRef<'a>
+    pub cxt: &'a LuaContext,
+    pub ptr: LuaRef<'a>
 }
 
 impl<'a> Table<'a> {

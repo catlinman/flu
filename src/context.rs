@@ -1,3 +1,5 @@
+use LuaValue;
+use Table;
 use ffi;
 
 use stack::Read;
@@ -51,8 +53,24 @@ impl LuaContext {
     pub fn eval<T>(&mut self, code: &str) -> T {
         unimplemented!()
     }*/
+
+    pub fn get<'a, T>(&'a self, idx: &str) -> T
+                      where T: Read<'a> + Size {
+        unsafe { ffi::lua_getfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8); }
+    
+        self.pop::<T>()
+    }
+
+    pub fn set<T>(&self, idx: &str, val: T)
+                  where T: Push {
+        idx.push(self);
+        val.push(self);
+        unsafe { ffi::lua_setfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8); }
+        
+    }
+
     pub fn peek<'a, T>(&'a self, idx: i32) -> T
-                   where T: Read<'a> {
+                       where T: Read<'a> {
         T::read(self, idx)
     }
 
@@ -101,6 +119,16 @@ impl Drop for LuaContext {
             unsafe { ffi::lua_close(self.handle) }
         }
     }
+}
+
+#[test]
+fn get_globals() {
+    let cxt = LuaContext::new();
+
+    cxt.set("quxxy_macro_wizard", Table::new(&cxt));
+    assert_enum!(cxt.get::<LuaValue>("quxxy_macro_wizard"), LuaValue::Table);
+
+    assert_eq!(cxt.size(), 0);
 }
 
 #[test]
