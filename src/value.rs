@@ -3,8 +3,8 @@ use Table;
 use ffi;
 use nil;
 
-use read::Read;
-use size::Size;
+use stack::Read;
+use stack::Size;
 
 #[derive(Debug, PartialEq)]
 pub enum LuaValue<'a> {
@@ -51,7 +51,7 @@ impl<'a> Size for LuaValue<'a> {
 }
 
 #[test]
-fn flu_stack_read_value() {
+fn read_value() {
     let cxt = LuaContext::new();
 
     cxt.push((nil, 45f32, "Hello world!"));

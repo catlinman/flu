@@ -139,7 +139,7 @@ tuple_read!(A B C D E F G H I J K L); */
 
 
 #[test]
-fn flu_stack_read_int() {
+fn read_int() {
     let cxt = LuaContext::new();
 
     cxt.push(42i8);
@@ -153,7 +153,7 @@ fn flu_stack_read_int() {
 }
 
 #[test]
-fn flu_stack_read_num() {
+fn read_num() {
     let cxt = LuaContext::new();
 
     cxt.push(42f64);
@@ -170,7 +170,7 @@ fn flu_stack_read_num() {
 }
 
 #[test]
-fn flu_stack_read_string() {
+fn read_string() {
     let cxt = LuaContext::new();
 
     cxt.push(("Hello world!", "Hello rust!".to_string()));
@@ -180,7 +180,7 @@ fn flu_stack_read_string() {
 }
 
 #[test]
-fn flu_stack_read_optional() {
+fn read_optional() {
     let cxt = LuaContext::new();
 
     cxt.push(("Hello world!", nil));

@@ -1,8 +1,8 @@
 use ffi;
 
-use read::Read;
-use push::Push;
-use size::Size;
+use stack::Read;
+use stack::Push;
+use stack::Size;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct LuaContext {
@@ -104,7 +104,7 @@ impl Drop for LuaContext {
 }
 
 #[test]
-fn flu_stack_size() {
+fn stack_size() {
     let cxt = LuaContext::new();
 
     cxt.push((true, false, true, false));

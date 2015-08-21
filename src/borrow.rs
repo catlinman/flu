@@ -1,9 +1,9 @@
 use LuaContext;
 use ffi;
 
-use read::Read;
-use push::Push;
-use size::Size;
+use stack::Read;
+use stack::Push;
+use stack::Size;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct LuaRef<'a> {
@@ -72,7 +72,7 @@ impl<'a> Size for LuaRef<'a> {
 }
 
 #[test]
-fn flu_stack_read_ref() {
+fn read_ref() {
     let cxt = LuaContext::new();
 
     cxt.push("Hello world!");

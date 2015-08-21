@@ -3,45 +3,15 @@ use LuaRef;
 use ffi;
 use nil;
 
-use read::Read;
-use push::Push;
-use size::Size;
+use super::LuaIndex;
+
+use stack::Read;
+use stack::Push;
+use stack::Size;
 
 use std::mem;
 use std::hash::Hash;
 use std::collections::HashMap;
-
-pub trait LuaIndex {
-    fn get(&self, cxt: &LuaContext, idx: i32);
-    fn set(&self, cxt: &LuaContext, idx: i32);
-}
-
-macro_rules! integer_index {
-    ($ty:ident) => (
-        impl LuaIndex for $ty {
-            fn get(&self, cxt: &LuaContext, idx: i32) {
-                unsafe { ffi::lua_rawgeti(cxt.handle, idx, 1 + *self as i32) }
-            }
-
-            fn set(&self, cxt: &LuaContext, idx: i32) {
-                unsafe { ffi::lua_rawseti(cxt.handle, idx, 1 + *self as i32) }
-            }
-        }
-    )
-}
-
-integer_index!(i32);
-integer_index!(usize);
-
-impl<'a, 'b> LuaIndex for &'b str {
-    fn get(&self, cxt: &LuaContext, idx: i32) {
-        unsafe { ffi::lua_getfield(cxt.handle, idx, self.as_ptr() as *const i8) }
-    }
-
-    fn set(&self, cxt: &LuaContext, idx: i32) {
-        unsafe { ffi::lua_setfield(cxt.handle, idx, self.as_ptr() as *const i8) }
-    }
-}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Table<'a> {

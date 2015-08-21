@@ -1,17 +1,17 @@
 extern crate libc;
 
 pub mod ffi;
-pub mod push;
-pub mod read;
-pub mod size;
+pub mod stack;
+
+pub mod collections;
 
 mod context;
-mod table;
 mod value;
 mod borrow;
 
 pub use context::LuaContext;
-pub use table::Table;
+pub use collections::Array;
+pub use collections::Table;
 pub use value::LuaValue;
 pub use borrow::LuaRef;
 
