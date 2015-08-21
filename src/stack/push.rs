@@ -1,3 +1,4 @@
+
 use LuaContext;
 use LuaRef;
 use ffi;
@@ -11,13 +12,17 @@ pub trait Push {
 
 impl Push for nil {
     fn push(&self, cxt: &LuaContext) {
-        unsafe { ffi::lua_pushnil(cxt.handle) }
+        unsafe {
+            ffi::lua_pushnil(cxt.handle)
+        }
     }
 }
 
 impl Push for bool {
     fn push(&self, cxt: &LuaContext) {
-        unsafe { ffi::lua_pushboolean(cxt.handle, *self as i32) }
+        unsafe {
+            ffi::lua_pushboolean(cxt.handle, *self as i32)
+        }
     }
 }
 
@@ -54,23 +59,31 @@ number_push!(f64);
 
 impl<'a> Push for &'a str {
     fn push(&self, cxt: &LuaContext) {
-        unsafe { ffi::lua_pushlstring(cxt.handle, self.as_ptr() as *const i8, self.len() as u64); }
+        unsafe {
+            ffi::lua_pushlstring(cxt.handle, self.as_ptr() as *const i8, self.len() as u64);
+        }
     }
 }
 
 impl Push for String {
     fn push(&self, cxt: &LuaContext) {
         let value = CString::new(&self[..]).unwrap();
-        unsafe { ffi::lua_pushlstring(cxt.handle, value.as_ptr(), self.len() as u64) };
+        unsafe {
+            ffi::lua_pushlstring(cxt.handle, value.as_ptr(), self.len() as u64)
+        };
     }
 }
 
 impl<T> Push for Option<T> where T: Push {
     fn push(&self, cxt: &LuaContext) {
         match self {
-            &Some(ref p) => { p.push(cxt) },
-            &None        => {
-                unsafe { ffi::lua_pushnil(cxt.handle) }
+            &Some(ref p) => {
+                p.push(cxt)
+            }
+            &None => {
+                unsafe {
+                    ffi::lua_pushnil(cxt.handle)
+                }
             }
         }
     }

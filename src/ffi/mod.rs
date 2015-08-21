@@ -51,7 +51,7 @@ pub struct lua_Debug {
     linedefined: c_int,
     lastlinedefined: c_int,
     short_src: [c_char; 60],
-    i_ci: c_int
+    i_ci: c_int,
 }
 
 pub type lua_CFunction = unsafe extern "C" fn(L: *mut lua_State) -> c_int;
@@ -176,7 +176,7 @@ extern "C" {
     pub fn lua_gethookcount(L: *mut lua_State) -> c_int;
 
     pub fn luaL_newstate() -> *mut lua_State;
-    
+
     pub fn luaopen_base(L: *mut lua_State) -> c_int;
     pub fn luaopen_table(L: *mut lua_State) -> c_int;
     pub fn luaopen_io(L: *mut lua_State) -> c_int;
@@ -200,7 +200,7 @@ pub unsafe fn lua_upvalueindex(idx: c_int) -> c_int {
 
 #[inline(always)]
 pub unsafe fn lua_pop(L: *mut lua_State, n: c_int) {
-    lua_settop(L, -n-1)
+    lua_settop(L, -n - 1)
 }
 
 #[inline(always)]

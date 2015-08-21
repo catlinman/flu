@@ -1,3 +1,4 @@
+
 use LuaValue;
 use LuaRef;
 use nil;
@@ -38,7 +39,7 @@ impl<T> Size for Option<T> where T: Size {
     fn size(&self) -> i32 {
         match self {
             &Some(ref ty) => ty.size(),
-            &None => 1
+            &None => 1,
         }
     }
 }

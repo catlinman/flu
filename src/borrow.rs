@@ -1,3 +1,4 @@
+
 use LuaContext;
 use ffi;
 
@@ -13,7 +14,9 @@ pub struct LuaRef<'a> {
 
 impl<'a> Drop for LuaRef<'a> {
     fn drop(&mut self) {
-        unsafe { ffi::luaL_unref(self.cxt.handle, ffi::LUA_REGISTRYINDEX, self.key) }
+        unsafe {
+            ffi::luaL_unref(self.cxt.handle, ffi::LUA_REGISTRYINDEX, self.key)
+        }
     }
 }
 
@@ -26,17 +29,14 @@ impl<'a> Read<'a> for LuaRef<'a> {
             match ffi::lua_isnil(cxt.handle, idx) {
                 true => {
                     cxt.pop_discard(-1);
-                    LuaRef {
-                        cxt: cxt,
-                        key: -1,
-                    }
+                    LuaRef { cxt: cxt, key: -1 }
                 }
                 false => {
                     ffi::lua_rawgeti(cxt.handle, t, ffi::FREELIST_REF);
                     let r = match cxt.pop::<i32>() {
                         0 => {
                             ffi::lua_objlen(cxt.handle, t) as i32 + 1
-                        },
+                        }
                         a @ _ => {
                             ffi::lua_rawgeti(cxt.handle, t, a);
                             ffi::lua_rawseti(cxt.handle, t, ffi::FREELIST_REF);
@@ -45,10 +45,7 @@ impl<'a> Read<'a> for LuaRef<'a> {
                     };
                     ffi::lua_rawseti(cxt.handle, t, r);
 
-                    LuaRef {
-                        cxt: cxt,
-                        key: r,
-                    }
+                    LuaRef { cxt: cxt, key: r }
                 }
             }
         }
@@ -61,7 +58,9 @@ impl<'a> Read<'a> for LuaRef<'a> {
 
 impl<'a> Push for LuaRef<'a> {
     fn push(&self, cxt: &LuaContext) {
-        unsafe { ffi::lua_rawgeti(cxt.handle, ffi::LUA_REGISTRYINDEX, self.key) }
+        unsafe {
+            ffi::lua_rawgeti(cxt.handle, ffi::LUA_REGISTRYINDEX, self.key)
+        }
     }
 }
 

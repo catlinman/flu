@@ -1,3 +1,4 @@
+
 use LuaContext;
 use ffi;
 
@@ -25,10 +26,14 @@ integer_index!(usize);
 
 impl<'a, 'b> LuaIndex for &'b str {
     fn get(&self, cxt: &LuaContext, idx: i32) {
-        unsafe { ffi::lua_getfield(cxt.handle, idx, self.as_ptr() as *const i8) }
+        unsafe {
+            ffi::lua_getfield(cxt.handle, idx, self.as_ptr() as *const i8)
+        }
     }
 
     fn set(&self, cxt: &LuaContext, idx: i32) {
-        unsafe { ffi::lua_setfield(cxt.handle, idx, self.as_ptr() as *const i8) }
+        unsafe {
+            ffi::lua_setfield(cxt.handle, idx, self.as_ptr() as *const i8)
+        }
     }
 }

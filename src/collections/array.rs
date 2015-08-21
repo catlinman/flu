@@ -1,3 +1,4 @@
+
 use LuaContext;
 use LuaRef;
 use ffi;
@@ -14,22 +15,24 @@ use std::collections::HashMap;
 #[derive(Debug, Eq, PartialEq)]
 pub struct Array<'a> {
     cxt: &'a LuaContext,
-    ptr: LuaRef<'a>
+    ptr: LuaRef<'a>,
 }
 
 impl<'a> Array<'a> {
     pub fn new(cxt: &'a LuaContext) -> Self {
-        unsafe { ffi::lua_newtable(cxt.handle); }
-
-        Array {
-            cxt: cxt,
-            ptr: LuaRef::read(cxt, -1)
+        unsafe {
+            ffi::lua_newtable(cxt.handle);
         }
+
+        Array { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
     pub fn from_vec<V>(cxt: &'a LuaContext, vec: &Vec<V>) -> Self
-                       where V: Push + Size {
-        unsafe { ffi::lua_newtable(cxt.handle); }
+        where V: Push + Size
+    {
+        unsafe {
+            ffi::lua_newtable(cxt.handle);
+        }
 
         for (k, v) in vec.iter().enumerate() {
             v.push(cxt);
@@ -39,14 +42,12 @@ impl<'a> Array<'a> {
             }
         }
 
-        Array {
-            cxt: cxt,
-            ptr: LuaRef::read(cxt, -1)
-        }
+        Array { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
     pub fn get<T>(&'a self, idx: i32) -> T
-                  where T: Read<'a> + Size {
+        where T: Read<'a> + Size
+    {
         self.ptr.push(self.cxt);
 
         unsafe {
@@ -59,7 +60,8 @@ impl<'a> Array<'a> {
     }
 
     pub fn set<T>(&'a self, idx: i32, val: T)
-                  where T: Push + Size {
+        where T: Push + Size
+    {
         self.ptr.push(self.cxt);
         self.cxt.push(val);
 
@@ -72,7 +74,9 @@ impl<'a> Array<'a> {
 
     pub fn len(&self) -> usize {
         self.ptr.push(self.cxt);
-        let len = unsafe { ffi::lua_objlen(self.cxt.handle, -1) as usize };
+        let len = unsafe {
+            ffi::lua_objlen(self.cxt.handle, -1) as usize
+        };
         self.cxt.pop_discard(1);
         len
     }
@@ -80,14 +84,13 @@ impl<'a> Array<'a> {
 
 impl<'a> Read<'a> for Array<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
-        Array {
-            cxt: cxt,
-            ptr: LuaRef::read(cxt, idx)
-        }
+        Array { cxt: cxt, ptr: LuaRef::read(cxt, idx) }
     }
 
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
-        unsafe { ffi::lua_istable(cxt.handle, idx) }
+        unsafe {
+            ffi::lua_istable(cxt.handle, idx)
+        }
     }
 }
 

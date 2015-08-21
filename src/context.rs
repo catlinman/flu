@@ -1,3 +1,4 @@
+
 use LuaValue;
 use Table;
 use ffi;
@@ -9,29 +10,25 @@ use stack::Size;
 #[derive(Debug, PartialEq, Eq)]
 pub struct LuaContext {
     pub handle: *mut ffi::lua_State,
-    owner: bool
+    owner: bool,
 }
 
 impl LuaContext {
     pub fn new() -> Self {
         LuaContext {
-            handle: unsafe { ffi::luaL_newstate() },
+            handle: unsafe {
+                ffi::luaL_newstate()
+            },
             owner: true,
         }
     }
 
     pub fn from_state(state: *mut ffi::lua_State) -> Self {
-        LuaContext {
-            handle: state,
-            owner: true,
-        }
+        LuaContext { handle: state, owner: true }
     }
 
     pub fn from_state_weak(state: *mut ffi::lua_State) -> Self {
-        LuaContext {
-            handle: state,
-            owner: false,
-        }
+        LuaContext { handle: state, owner: false }
     }
 
     /*pub fn load(&mut self, path: std::path::Path) -> Result<(), IoError> {
@@ -44,7 +41,7 @@ impl LuaContext {
         };
 
         Ok(())
-    }*/ 
+    }*/
 
     /*pub fn eval_file<T>(&mut self, path: std::path::Path) -> Result<Result<T, ()>, IoError> {
         unimplemented!()
@@ -55,32 +52,41 @@ impl LuaContext {
     }*/
 
     pub fn get<'a, T>(&'a self, idx: &str) -> T
-                      where T: Read<'a> + Size {
-        unsafe { ffi::lua_getfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8); }
-    
+        where T: Read<'a> + Size
+    {
+        unsafe {
+            ffi::lua_getfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8);
+        }
+
         self.pop::<T>()
     }
 
     pub fn set<T>(&self, idx: &str, val: T)
-                  where T: Push {
+        where T: Push
+    {
         idx.push(self);
         val.push(self);
-        unsafe { ffi::lua_setfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8); }
-        
+        unsafe {
+            ffi::lua_setfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8);
+        }
+
     }
 
     pub fn peek<'a, T>(&'a self, idx: i32) -> T
-                       where T: Read<'a> {
+        where T: Read<'a>
+    {
         T::read(self, idx)
     }
 
     pub fn push<T>(&self, val: T)
-                   where T: Push {
+        where T: Push
+    {
         val.push(self);
     }
 
     pub fn pop<'a, T>(&'a self) -> T
-                      where T: Read<'a> + Size {
+        where T: Read<'a> + Size
+    {
         let ret = T::read(self, -1);
         if ret.size() > 0 {
             self.pop_discard(1);
@@ -89,11 +95,14 @@ impl LuaContext {
     }
 
     pub fn pop_discard(&self, idx: i32) {
-        unsafe { ffi::lua_pop(self.handle, idx) };
+        unsafe {
+            ffi::lua_pop(self.handle, idx)
+        };
     }
 
     pub fn remove<'a, T>(&'a self, idx: i32) -> T
-                        where T: Read<'a> + Size {
+        where T: Read<'a> + Size
+    {
         let ret = T::read(self, idx);
         if ret.size() > 0 {
             self.remove_discard(idx);
@@ -102,11 +111,15 @@ impl LuaContext {
     }
 
     pub fn remove_discard(&self, idx: i32) {
-        unsafe { ffi::lua_remove(self.handle, idx) };    
+        unsafe {
+            ffi::lua_remove(self.handle, idx)
+        };
     }
 
     pub fn size(&self) -> i32 {
-        unsafe { ffi::lua_gettop(self.handle) }
+        unsafe {
+            ffi::lua_gettop(self.handle)
+        }
     }
 
     // TODO: more stuff
@@ -116,7 +129,9 @@ impl LuaContext {
 impl Drop for LuaContext {
     fn drop(&mut self) {
         if self.owner {
-            unsafe { ffi::lua_close(self.handle) }
+            unsafe {
+                ffi::lua_close(self.handle)
+            }
         }
     }
 }

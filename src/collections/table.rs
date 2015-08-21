@@ -1,3 +1,4 @@
+
 use LuaContext;
 use LuaRef;
 use ffi;
@@ -16,53 +17,53 @@ use std::collections::HashMap;
 #[derive(Debug, Eq, PartialEq)]
 pub struct Table<'a> {
     pub cxt: &'a LuaContext,
-    pub ptr: LuaRef<'a>
+    pub ptr: LuaRef<'a>,
 }
 
 impl<'a> Table<'a> {
     pub fn new(cxt: &'a LuaContext) -> Self {
-        unsafe { ffi::lua_newtable(cxt.handle); }
-
-        Table {
-            cxt: cxt,
-            ptr: LuaRef::read(cxt, -1)
+        unsafe {
+            ffi::lua_newtable(cxt.handle);
         }
+
+        Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
     pub fn from_map<K, V>(cxt: &'a LuaContext, map: &HashMap<K, V>) -> Self
-                          where K: LuaIndex + Eq + Hash,
-                                V: Push + Size {
-        unsafe { ffi::lua_newtable(cxt.handle); }
+        where K: LuaIndex + Eq + Hash,
+              V: Push + Size
+    {
+        unsafe {
+            ffi::lua_newtable(cxt.handle);
+        }
 
         for (k, v) in map.iter() {
             v.push(cxt);
             k.set(cxt, cxt.size() - v.size());
         }
 
-        Table {
-            cxt: cxt,
-            ptr: LuaRef::read(cxt, -1)
-        }
+        Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
     pub fn from_vec<V>(cxt: &'a LuaContext, vec: &Vec<V>) -> Self
-                       where V: Push + Size {
-        unsafe { ffi::lua_newtable(cxt.handle); }
+        where V: Push + Size
+    {
+        unsafe {
+            ffi::lua_newtable(cxt.handle);
+        }
 
         for (k, v) in vec.iter().enumerate() {
             v.push(cxt);
             k.set(cxt, cxt.size() - v.size());
         }
 
-        Table {
-            cxt: cxt,
-            ptr: LuaRef::read(cxt, -1)
-        }
+        Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
     pub fn get<T, K>(&'a self, idx: K) -> T
-                  where T: Read<'a> + Size,
-                        K: LuaIndex {
+        where T: Read<'a> + Size,
+              K: LuaIndex
+    {
         self.ptr.push(self.cxt);
 
         idx.get(self.cxt, -1);
@@ -73,8 +74,9 @@ impl<'a> Table<'a> {
     }
 
     pub fn set<T, K>(&'a self, idx: K, val: T)
-                  where T: Push + Size,
-                        K: LuaIndex {
+        where T: Push + Size,
+              K: LuaIndex
+    {
         self.ptr.push(self.cxt);
         self.cxt.push(val);
 
@@ -85,7 +87,9 @@ impl<'a> Table<'a> {
 
     pub fn len(&self) -> usize {
         self.ptr.push(self.cxt);
-        let len = unsafe { ffi::lua_objlen(self.cxt.handle, -1) as usize };
+        let len = unsafe {
+            ffi::lua_objlen(self.cxt.handle, -1) as usize
+        };
         self.cxt.pop_discard(1);
         len
     }
@@ -93,14 +97,13 @@ impl<'a> Table<'a> {
 
 impl<'a> Read<'a> for Table<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
-        Table {
-            cxt: cxt,
-            ptr: LuaRef::read(cxt, idx)
-        }
+        Table { cxt: cxt, ptr: LuaRef::read(cxt, idx) }
     }
 
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
-        unsafe { ffi::lua_istable(cxt.handle, idx) }
+        unsafe {
+            ffi::lua_istable(cxt.handle, idx)
+        }
     }
 }
 
@@ -154,10 +157,10 @@ fn from_map() {
     let table = Table::from_map(&cxt, &map);
 
     assert_eq!(cxt.size(), 0);
-    
+
     // TODO: separate tables and contigious integral arrays as `objlen`
     // (#-operator) doesn't take into account non-contigious keys
-    
+
     // assert_eq!(table.len(), 2);
 
     assert_eq!(table.get::<i32, _>("foo"), 5);

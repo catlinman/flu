@@ -1,3 +1,4 @@
+
 use LuaContext;
 use LuaRef;
 use Table;
@@ -16,24 +17,34 @@ pub enum LuaValue<'a> {
     /*Function(LuaFunction),
     Userdata,
     Thread,*/
-    Nil
+    Nil,
 }
 
 impl<'a> Read<'a> for LuaValue<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             match ffi::lua_type(cxt.handle, idx) {
-                -1 => panic!("woops!"),                         /* TNONE */
-                 0 => LuaValue::Nil,                            /* TNIL */
-                 1 => LuaValue::Bool(bool::read(cxt, idx)),     /* TBOOLEAN */
-                 2 => unimplemented!(),                         /* TLIGHTUSERDATA */
-                 3 => LuaValue::Number(f64::read(cxt, idx)),    /* TNUMBER */
-                 4 => LuaValue::String(<&str>::read(cxt, idx)), /* TSTRING */
-                 5 => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),                         /* TTABLE */
-                 6 => unimplemented!(),                         /* TFUNCTION */
-                 7 => unimplemented!(),                         /* TUSERDATA */
-                 8 => unimplemented!(),                         /* TTHREAD */
-                 _ => panic!("yahallo")
+                -1 => panic!("woops!"),
+                /* TNONE */
+                0 => LuaValue::Nil,
+                /* TNIL */
+                1 => LuaValue::Bool(bool::read(cxt, idx)),
+                /* TBOOLEAN */
+                2 => unimplemented!(),
+                /* TLIGHTUSERDATA */
+                3 => LuaValue::Number(f64::read(cxt, idx)),
+                /* TNUMBER */
+                4 => LuaValue::String(<&str as >::read(cxt, idx)),
+                /* TSTRING */
+                5 => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef as >::read(cxt, idx) }),
+                /* TTABLE */
+                6 => unimplemented!(),
+                /* TFUNCTION */
+                7 => unimplemented!(),
+                /* TUSERDATA */
+                8 => unimplemented!(),
+                /* TTHREAD */
+                _ => panic!("yahallo"),
             }
         }
     }

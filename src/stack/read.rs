@@ -1,3 +1,4 @@
+
 use LuaContext;
 use LuaValue;
 use LuaRef;
@@ -15,11 +16,15 @@ pub trait Read<'a> {
 
 impl<'a> Read<'a> for bool {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
-        unsafe { ffi::lua_toboolean(cxt.handle, idx) > 0 }
+        unsafe {
+            ffi::lua_toboolean(cxt.handle, idx) > 0
+        }
     }
 
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
-        unsafe { ffi::lua_isboolean(cxt.handle, idx) }
+        unsafe {
+            ffi::lua_isboolean(cxt.handle, idx)
+        }
     }
 }
 
@@ -71,7 +76,9 @@ impl<'a, 'b> Read<'a> for &'b str {
     }
 
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
-        unsafe { ffi::lua_isstring(cxt.handle, idx) > 0}
+        unsafe {
+            ffi::lua_isstring(cxt.handle, idx) > 0
+        }
     }
 }
 
@@ -88,7 +95,9 @@ impl<'a> Read<'a> for String {
     }
 
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
-        unsafe { ffi::lua_isstring(cxt.handle, idx) > 0 }
+        unsafe {
+            ffi::lua_isstring(cxt.handle, idx) > 0
+        }
     }
 }
 
@@ -97,13 +106,16 @@ impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
         unsafe {
             match ffi::lua_isnil(cxt.handle, idx) {
                 false => Some(cxt.peek::<T>(-1)),
-                true  => None,
+                true => None,
             }
         }
     }
 
     fn check(cxt: &'a LuaContext, idx: i32) -> bool {
-        T::check(cxt, idx) || unsafe { ffi::lua_isnil(cxt.handle, idx) }
+        T::check(cxt, idx) ||
+        unsafe {
+            ffi::lua_isnil(cxt.handle, idx)
+        }
     }
 }
 
