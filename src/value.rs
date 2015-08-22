@@ -18,13 +18,14 @@ pub enum LuaValue<'a> {
     Userdata,
     Thread,*/
     Nil,
+    None,
 }
 
 impl<'a> Read<'a> for LuaValue<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             match ffi::lua_type(cxt.handle, idx) {
-                -1 => panic!("woops!"),
+                -1 => LuaValue::None,
                 /* TNONE */
                 0 => LuaValue::Nil,
                 /* TNIL */
@@ -34,9 +35,9 @@ impl<'a> Read<'a> for LuaValue<'a> {
                 /* TLIGHTUSERDATA */
                 3 => LuaValue::Number(f64::read(cxt, idx)),
                 /* TNUMBER */
-                4 => LuaValue::String(<&str as >::read(cxt, idx)),
+                4 => LuaValue::String(<&str>::read(cxt, idx)),
                 /* TSTRING */
-                5 => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef as >::read(cxt, idx) }),
+                5 => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),
                 /* TTABLE */
                 6 => unimplemented!(),
                 /* TFUNCTION */

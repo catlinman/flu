@@ -1,5 +1,5 @@
-
 use LuaContext;
+use LuaValue;
 use LuaRef;
 use ffi;
 use nil;
@@ -8,6 +8,7 @@ use stack::Read;
 use stack::Push;
 use stack::Size;
 
+use std::marker::PhantomData;
 use std::mem;
 use std::hash::Hash;
 use std::collections::HashMap;
@@ -69,7 +70,23 @@ impl<'a> Array<'a> {
             ffi::lua_rawseti(self.cxt.handle, -2, 1 + idx);
         }
 
-        self.cxt.pop_discard(2);
+        self.cxt.pop_discard(1);
+    }
+
+    pub fn iter<T>(&self) -> ArrayIterator<T>
+        where T: Read<'a> + Size
+    {
+        self.ptr.push(self.cxt);
+
+        unsafe {
+            ffi::lua_pushnil(self.cxt.handle);
+        }
+
+        // TODO: make LuaContext immutable during iter borrow
+        ArrayIterator {
+            cxt: self.cxt,
+            _pd: PhantomData
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -106,6 +123,35 @@ impl<'a> Size for Array<'a> {
     }
 }
 
+pub struct ArrayIterator<'a, T> {
+    cxt: &'a LuaContext,
+    _pd: PhantomData<T>
+}
+
+impl<'a, T> Iterator for ArrayIterator<'a, T>
+        where T: Read<'a> + Size
+    {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            match ffi::lua_next(self.cxt.handle, -2) > 0 {
+                true => {
+                    ffi::lua_pushvalue(self.cxt.handle, -2);
+                    let v = self.cxt.peek::<T>(-2);
+                    self.cxt.pop_discard(2);
+
+                    Some(v)
+                }
+                false => {
+                    self.cxt.pop_discard(1);
+                    None
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn len() {
     let cxt = LuaContext::new();
@@ -132,6 +178,20 @@ fn access() {
     assert_eq!(table.get::<Option<i32>>(0), None);
     assert_eq!(table.get::<f64>(1), 5f64);
     assert_eq!(table.get::<&str>(2), "flim-flam");
+}
+
+#[test]
+fn iter() {
+    let cxt = LuaContext::new();
+
+    let table = Array::new(&cxt);
+
+    table.set(0, 5);
+    table.set(1, 10);
+    table.set(2, 15);
+
+    assert_eq!(table.iter::<i32>().fold(0, |acc, item| { acc + item}), 30);
+    assert_eq!(cxt.size(), 0);
 }
 
 #[test]

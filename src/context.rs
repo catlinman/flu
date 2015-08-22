@@ -122,6 +122,13 @@ impl LuaContext {
         }
     }
 
+    pub fn dump(&self) {
+        print!("[ ({}) ", self.size());
+        for i in 0..self.size() {
+            print!("{}: {:?} ", i + 1, self.peek::<LuaValue>(i + 1));
+        }
+        println!(" ]");
+    }
     // TODO: more stuff
 
 }

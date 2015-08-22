@@ -11,11 +11,11 @@ macro_rules! integer_index {
     ($ty:ident) => (
         impl LuaIndex for $ty {
             fn get(&self, cxt: &LuaContext, idx: i32) {
-                unsafe { ffi::lua_rawgeti(cxt.handle, idx, 1 + *self as i32) }
+                unsafe { ffi::lua_rawgeti(cxt.handle, idx, *self as i32) }
             }
 
             fn set(&self, cxt: &LuaContext, idx: i32) {
-                unsafe { ffi::lua_rawseti(cxt.handle, idx, 1 + *self as i32) }
+                unsafe { ffi::lua_rawseti(cxt.handle, idx, *self as i32) }
             }
         }
     )
