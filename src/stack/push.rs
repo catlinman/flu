@@ -60,7 +60,7 @@ number_push!(f64);
 impl<'a> Push for &'a str {
     fn push(&self, cxt: &LuaContext) {
         unsafe {
-            ffi::lua_pushlstring(cxt.handle, self.as_ptr() as *const i8, self.len() as u64);
+            ffi::lua_pushlstring(cxt.handle, self.as_ptr() as *const i8, self.len());
         }
     }
 }
@@ -69,7 +69,7 @@ impl Push for String {
     fn push(&self, cxt: &LuaContext) {
         let value = CString::new(&self[..]).unwrap();
         unsafe {
-            ffi::lua_pushlstring(cxt.handle, value.as_ptr(), self.len() as u64)
+            ffi::lua_pushlstring(cxt.handle, value.as_ptr(), self.len())
         };
     }
 }
@@ -113,3 +113,4 @@ tuple_push!(A B C D E F G H I);
 tuple_push!(A B C D E F G H I J);
 tuple_push!(A B C D E F G H I J K);
 tuple_push!(A B C D E F G H I J K L);
+

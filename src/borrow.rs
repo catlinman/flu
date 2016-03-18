@@ -1,4 +1,3 @@
-
 use LuaContext;
 use ffi;
 
@@ -19,7 +18,6 @@ impl<'a> Drop for LuaRef<'a> {
         }
     }
 }
-
 
 impl<'a> Read<'a> for LuaRef<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
@@ -65,7 +63,7 @@ impl<'a> Push for LuaRef<'a> {
 }
 
 impl<'a> Size for LuaRef<'a> {
-    fn size(&self) -> i32 {
+    fn size() -> i32 {
         0
     }
 }

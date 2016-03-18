@@ -1,4 +1,3 @@
-
 use LuaContext;
 use LuaValue;
 use LuaRef;
@@ -105,7 +104,7 @@ impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             match ffi::lua_isnil(cxt.handle, idx) {
-                false => Some(cxt.peek::<T>(-1)),
+                false => Some(cxt.peek::<T>(idx)),
                 true => None,
             }
         }

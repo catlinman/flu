@@ -2,8 +2,8 @@
 #![allow(non_snake_case)]
 #![allow(improper_ctypes)]
 
-use libc::{c_int, c_char, c_void, c_double, size_t};
-use libc::types::os::arch::c95::ptrdiff_t;
+use libc::{c_int, c_char, c_void, c_double, size_t, ptrdiff_t};
+
 use std::ptr;
 
 #[macro_export]
@@ -16,6 +16,12 @@ pub const FREELIST_REF: c_int = 0;
 pub const LUA_REGISTRYINDEX: c_int = -10000;
 pub const LUA_ENVIRONINDEX: c_int = -10001;
 pub const LUA_GLOBALSINDEX: c_int = -10002;
+
+pub const LUA_YIELD: c_int =     1;
+pub const LUA_ERRRUN: c_int =    2;
+pub const LUA_ERRSYNTAX: c_int = 3;
+pub const LUA_ERRMEM: c_int =    4;
+pub const LUA_ERRERR: c_int =    5;
 
 pub const LUA_MULTRET: c_int = -1;
 
@@ -187,7 +193,7 @@ extern "C" {
     pub fn luaopen_package(L: *mut lua_State) -> c_int;
     pub fn luaL_openlibs(L: *mut lua_State);
 
-    pub fn luaL_loadstring(L: *mut lua_State, s: *const c_char);
+    pub fn luaL_loadstring(L: *mut lua_State, s: *const c_char) -> c_int;
 
     pub fn luaL_ref(L: *mut lua_State, t: c_int) -> c_int;
     pub fn luaL_unref(L: *mut lua_State, t: c_int, tref: c_int);
@@ -266,7 +272,7 @@ pub unsafe fn lua_isnoneornil(L: *mut lua_State, idx: c_int) -> bool {
 
 #[inline(always)]
 pub unsafe fn lua_pushliteral(L: *mut lua_State, s: &'static str) {
-    lua_pushlstring(L, s.as_ptr() as *const c_char, s.len() as u64);
+    lua_pushlstring(L, s.as_ptr() as *const c_char, s.len());
 }
 
 #[inline(always)]
@@ -283,3 +289,9 @@ pub unsafe fn lua_getglobal(L: *mut lua_State, s: *const c_char) {
 pub unsafe fn lua_tostring(L: *mut lua_State, i: c_int) -> *const c_char {
     lua_tolstring(L, i, ptr::null_mut())
 }
+
+#[inline(always)]
+pub unsafe fn luaL_dostring(L: *mut lua_State, s: *const c_char) -> c_int {
+    luaL_loadstring(L, s) & lua_pcall(L, 0, LUA_MULTRET, 0)
+}
+

@@ -28,12 +28,13 @@ pub mod collections;
 mod context;
 mod value;
 mod borrow;
+mod function;
 
 pub use context::LuaContext;
-pub use collections::Array;
 pub use collections::Table;
 pub use value::LuaValue;
 pub use borrow::LuaRef;
+pub use function::Function;
 
 pub struct nil;
 

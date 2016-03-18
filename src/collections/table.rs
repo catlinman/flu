@@ -40,7 +40,7 @@ impl<'a> Table<'a> {
 
         for (k, v) in map.iter() {
             v.push(cxt);
-            k.set(cxt, cxt.size() - v.size());
+            k.set(cxt, cxt.size() - V::size());
         }
 
         Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
@@ -55,7 +55,7 @@ impl<'a> Table<'a> {
 
         for (k, v) in vec.iter().enumerate() {
             v.push(cxt);
-            (k + 1).set(cxt, cxt.size() - v.size());
+            (k + 1).set(cxt, cxt.size() - V::size());
         }
 
         Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
@@ -131,8 +131,8 @@ impl<'a> Push for Table<'a> {
 }
 
 impl<'a> Size for Table<'a> {
-    fn size(&self) -> i32 {
-        self.ptr.size()
+    fn size() -> i32 {
+        1
     }
 }
 

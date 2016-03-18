@@ -1,6 +1,6 @@
-
 use LuaContext;
 use LuaRef;
+use Function;
 use Table;
 use ffi;
 use nil;
@@ -14,8 +14,8 @@ pub enum LuaValue<'a> {
     String(&'a str),
     Bool(bool),
     Table(Table<'a>),
-    /*Function(LuaFunction),
-    Userdata,
+    Function(Function<'a>),
+    /*Userdata,
     Thread,*/
     Nil,
     None,
@@ -25,26 +25,16 @@ impl<'a> Read<'a> for LuaValue<'a> {
     fn read(cxt: &'a LuaContext, idx: i32) -> Self {
         unsafe {
             match ffi::lua_type(cxt.handle, idx) {
-                -1 => LuaValue::None,
-                /* TNONE */
-                0 => LuaValue::Nil,
-                /* TNIL */
-                1 => LuaValue::Bool(bool::read(cxt, idx)),
-                /* TBOOLEAN */
-                2 => unimplemented!(),
-                /* TLIGHTUSERDATA */
-                3 => LuaValue::Number(f64::read(cxt, idx)),
-                /* TNUMBER */
-                4 => LuaValue::String(<&str>::read(cxt, idx)),
-                /* TSTRING */
-                5 => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),
-                /* TTABLE */
-                6 => unimplemented!(),
-                /* TFUNCTION */
-                7 => unimplemented!(),
-                /* TUSERDATA */
-                8 => unimplemented!(),
-                /* TTHREAD */
+                ffi::LUA_TNONE => LuaValue::None,
+                ffi::LUA_TNIL => LuaValue::Nil,
+                ffi::LUA_TBOOLEAN => LuaValue::Bool(bool::read(cxt, idx)),
+                ffi::LUA_TLIGHTUSERDATA => unimplemented!(),
+                ffi::LUA_TNUMBER => LuaValue::Number(f64::read(cxt, idx)),
+                ffi::LUA_TSTRING => LuaValue::String(<&str>::read(cxt, idx)),
+                ffi::LUA_TTABLE => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),
+                ffi::LUA_TFUNCTION => LuaValue::Function(Function::read(cxt, idx)),
+                ffi::LUA_TUSERDATA => unimplemented!(),
+                ffi::LUA_TTHREAD => unimplemented!(),
                 _ => panic!("yahallo"),
             }
         }
@@ -56,10 +46,8 @@ impl<'a> Read<'a> for LuaValue<'a> {
 }
 
 impl<'a> Size for LuaValue<'a> {
-    fn size(&self) -> i32 {
-        match self {
-            _ => 1,
-        }
+    fn size() -> i32 {
+        1
     }
 }
 

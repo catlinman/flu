@@ -7,6 +7,8 @@ use stack::Read;
 use stack::Push;
 use stack::Size;
 
+use std::ffi::CString;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct LuaContext {
     pub handle: *mut ffi::lua_State,
@@ -45,11 +47,18 @@ impl LuaContext {
 
     /*pub fn eval_file<T>(&mut self, path: std::path::Path) -> Result<Result<T, ()>, IoError> {
         unimplemented!()
-    }
-
-    pub fn eval<T>(&mut self, code: &str) -> T {
-        unimplemented!()
     }*/
+
+    pub fn eval(&mut self, code: &str) -> Result<(), &str> {
+        unsafe {
+            let ret = ffi::luaL_dostring(self.handle, CString::new(code).unwrap().as_ptr());
+
+            match ret {
+                0 => Ok(()),
+                _ => Err(self.pop::<&str>())
+            }
+        }
+    }
 
     pub fn get<'a, T>(&'a self, idx: &str) -> T
         where T: Read<'a> + Size
@@ -66,6 +75,7 @@ impl LuaContext {
     {
         idx.push(self);
         val.push(self);
+
         unsafe {
             ffi::lua_setfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8);
         }
@@ -88,7 +98,7 @@ impl LuaContext {
         where T: Read<'a> + Size
     {
         let ret = T::read(self, -1);
-        if ret.size() > 0 {
+        if T::size() > 0 {
             self.pop_discard(1);
         }
         ret
@@ -104,7 +114,7 @@ impl LuaContext {
         where T: Read<'a> + Size
     {
         let ret = T::read(self, idx);
-        if ret.size() > 0 {
+        if T::size() > 0 {
             self.remove_discard(idx);
         }
         ret
@@ -123,9 +133,11 @@ impl LuaContext {
     }
 
     pub fn dump(&self) {
-        print!("[ ({}) ", self.size());
-        for i in 0..self.size() {
-            print!("{}: {:?} ", i + 1, self.peek::<LuaValue>(i + 1));
+        let size = self.size();
+
+        print!("[ ({}) ", size);
+        for i in 1..(size + 1) {
+            print!("{}: {:?} ", i, self.peek::<LuaValue>(i));
         }
         println!(" ]");
     }
@@ -161,3 +173,4 @@ fn stack_size() {
 
     assert_eq!(cxt.size(), 4);
 }
+

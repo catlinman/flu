@@ -1,5 +1,5 @@
 # flu
-flu is a wrapper around Lua 5.1 for the [Rust](https://www.rust-lang.org/) programming language. It's meant to provide safe abstractions over core Lua concepts – but also unsafe access to the Lua stack.
+flu is a framework for working with Lua 5.1 in the [Rust](https://www.rust-lang.org/) programming language. It's meant to provide quasi-safe abstractions over core Lua concepts – but also unsafe access to the Lua stack.
 
 ### What does it look like?
 To interface with Lua through flu, you must first create a `flu::LuaContext`.You can do this by either wrapping around an existing `*mut lua_State`, or by using `flu::LuaContext::new()` to initialize a new one underneath.
@@ -46,9 +46,8 @@ assert_eq!(val, "hello world!");
 ```
 
 ### How do i get it?
-flu is not currently on [crates.io](https://crates.io/), but you can use the latest version from github by adding this to your `Cargo.toml`:
+flu is not currently on [crates.io](https://crates.io/), but you can use the latest version from GitHub by adding this to your `Cargo.toml`:
 
 ```toml
-[dependencies.flu]
-git = "https://github.com/fkaa/flu/"
+flu = { git = "https://github.com/fkaa/flu" }
 ```
