@@ -61,3 +61,4 @@ fn read_value() {
     assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Number(45f64));
     assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::String("Hello world!"));
 }
+

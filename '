@@ -12,7 +12,6 @@ use libc;
 
 use std::ptr;
 use std::mem;
-use std::marker::PhantomData;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Function<'a> {
@@ -68,44 +67,6 @@ impl<'a> Size for Function<'a> {
     }
 }
 
-pub fn function<F, A, R>(func: F) -> RustFunction<F, A, R>
-        where F: Fn(A) -> R, A: for<'b> Read<'b> + Size, R: Push {
-    RustFunction {
-        func: func,
-        marker: PhantomData
-    }
-}
-
-pub struct RustFunction<F, A, R> {
-    func: F,
-    marker: PhantomData<(A, R)>
-}
-
-impl<'a, F, A, R> Push for RustFunction<F, A, R>
-        where F: Fn(A) -> R, A: for<'b> Read<'b> + Size, R: Push {
-    fn push(&self, cxt: &LuaContext) {
-        unsafe {
-            let wrapped = wrapper::<R, A, F>;
-
-            let func: &mut F = mem::transmute(ffi::lua_newuserdata(cxt.handle, mem::size_of::<F>() as libc::size_t));
-            ptr::copy(&self.func, func, 1);
-
-            ffi::lua_pushcclosure(cxt.handle, wrapped, 1);
-        }
-    }
-}
-
-unsafe extern fn wrapper<P, R, F>(L: *mut ffi::lua_State) -> libc::c_int
-        where P: Push, R: for<'a> Read<'a> + Size, F: Fn(R) -> P {
-    let cxt = LuaContext::from_state_weak(L);
-    let func: &mut F = unsafe { mem::transmute(ffi::lua_touserdata(L, ffi::lua_upvalueindex(1))) };
-
-    let args = cxt.pop::<R>();
-    cxt.push(func(args));
-
-    R::size()
-}
-
 #[test]
 fn simple() {
     let mut cxt = LuaContext::new();
@@ -145,13 +106,37 @@ fn custom_types() {
     assert_eq!(table.get::<i32, _>(2), 10);
 }
 
+impl<'a, P, R> Push for Fn(R) -> P
+        where P: Push, R: for<'b> Read<'b> + Size {
+    fn push(&self, cxt: &LuaContext) {
+        unsafe {
+            let wrapped = wrapper::<P, R, Self>;
+
+            let func: *mut Self = mem::transmute(ffi::lua_newuserdata(cxt.handle, mem::size_of::<Self>() as libc::size_t));
+            ptr::write(func, *self);
+
+            ffi::lua_pushcclosure(cxt.handle, wrapped, 1);
+        }
+    }
+}
+
+unsafe extern fn wrapper<P, R, F>(L: *mut ffi::lua_State) -> libc::c_int
+        where P: Push, R: for<'a> Read<'a> + Size, F: Fn(R) -> P {
+    let cxt = LuaContext::from_state_weak(L);
+    let func: &mut F = unsafe { mem::transmute(ffi::lua_touserdata(L, ffi::lua_upvalueindex(1))) };
+
+    let args = cxt.pop::<R>();
+    cxt.push(func(args));
+
+    R::size()
+}
+
 #[test]
 fn rust_fn() {
     let mut cxt = LuaContext::new();
 
-    cxt.set("foo", function(|a: i32| a + a));
-    let func = cxt.get::<Function>("foo");
+    cxt.set("foo", |a: i32| a + a);
 
-    assert_eq!(func.call::<i32, i32>(10).unwrap(), 20);
+    cxt.eval("print(foo(10))").ok();
 }
 

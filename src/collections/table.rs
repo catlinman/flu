@@ -61,7 +61,7 @@ impl<'a> Table<'a> {
         Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
-    pub fn get<T, K>(&'a self, idx: K) -> T
+    pub fn get<T, K>(&self, idx: K) -> T
         where T: Read<'a> + Size,
               K: LuaIndex
     {
