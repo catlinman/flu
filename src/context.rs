@@ -10,14 +10,14 @@ use stack::Size;
 use std::ffi::CString;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct LuaContext {
+pub struct Context {
     pub handle: *mut ffi::lua_State,
     owner: bool,
 }
 
-impl LuaContext {
+impl Context {
     pub fn new() -> Self {
-        LuaContext {
+        Context {
             handle: unsafe {
                 ffi::luaL_newstate()
             },
@@ -26,11 +26,11 @@ impl LuaContext {
     }
 
     pub fn from_state(state: *mut ffi::lua_State) -> Self {
-        LuaContext { handle: state, owner: true }
+        Context { handle: state, owner: true }
     }
 
     pub fn from_state_weak(state: *mut ffi::lua_State) -> Self {
-        LuaContext { handle: state, owner: false }
+        Context { handle: state, owner: false }
     }
 
     /*pub fn load(&mut self, path: std::path::Path) -> Result<(), IoError> {
@@ -145,7 +145,7 @@ impl LuaContext {
 
 }
 
-impl Drop for LuaContext {
+impl Drop for Context {
     fn drop(&mut self) {
         if self.owner {
             unsafe {
@@ -157,7 +157,7 @@ impl Drop for LuaContext {
 
 #[test]
 fn get_globals() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.set("quxxy_macro_wizard", Table::new(&cxt));
     assert_enum!(cxt.get::<LuaValue>("quxxy_macro_wizard"), LuaValue::Table);
@@ -167,7 +167,7 @@ fn get_globals() {
 
 #[test]
 fn stack_size() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.push((true, false, true, false));
 

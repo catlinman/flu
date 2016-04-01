@@ -1,4 +1,4 @@
-use LuaContext;
+use Context;
 use LuaRef;
 use Table;
 use ffi;
@@ -16,7 +16,7 @@ use std::marker::PhantomData;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Function<'a> {
-    cxt: &'a LuaContext,
+    cxt: &'a Context,
     ptr: LuaRef<'a>
 }
 
@@ -39,12 +39,12 @@ impl<'a> Function<'a> {
     }
 }
 
-/*impl<'a, T> Push for T where T: Fn(&'a LuaContext) {
+/*impl<'a, T> Push for T where T: Fn(&'a Context) {
 
 }*/
 
 impl<'a> Read<'a> for Function<'a> {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         unsafe {
             let func: LuaRef<'a> = cxt.remove(idx);
 
@@ -55,7 +55,7 @@ impl<'a> Read<'a> for Function<'a> {
         }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         unsafe {
             ffi::lua_type(cxt.handle, idx) == ffi::LUA_TFUNCTION
         }
@@ -83,7 +83,7 @@ pub struct RustFunction<F, A, R> {
 
 impl<'a, F, A, R> Push for RustFunction<F, A, R>
         where F: Fn(A) -> R, A: for<'b> Read<'b> + Size, R: Push {
-    fn push(&self, cxt: &LuaContext) {
+    fn push(&self, cxt: &Context) {
         unsafe {
             let wrapped = wrapper::<R, A, F>;
 
@@ -97,7 +97,7 @@ impl<'a, F, A, R> Push for RustFunction<F, A, R>
 
 unsafe extern fn wrapper<P, R, F>(L: *mut ffi::lua_State) -> libc::c_int
         where P: Push, R: for<'a> Read<'a> + Size, F: Fn(R) -> P {
-    let cxt = LuaContext::from_state_weak(L);
+    let cxt = Context::from_state_weak(L);
     let func: &mut F = unsafe { mem::transmute(ffi::lua_touserdata(L, ffi::lua_upvalueindex(1))) };
 
     let args = cxt.pop::<R>();
@@ -108,7 +108,7 @@ unsafe extern fn wrapper<P, R, F>(L: *mut ffi::lua_State) -> libc::c_int
 
 #[test]
 fn simple() {
-    let mut cxt = LuaContext::new();
+    let mut cxt = Context::new();
 
     let func = {
         cxt.eval("return function(a) return a * a end").ok();
@@ -120,7 +120,7 @@ fn simple() {
 
 #[test]
 fn multiple_args() {
-    let mut cxt = LuaContext::new();
+    let mut cxt = Context::new();
 
     let func = {
         cxt.eval("return function(a, b, c) return (a + b) * c end").ok();
@@ -132,7 +132,7 @@ fn multiple_args() {
 
 #[test]
 fn custom_types() {
-    let mut cxt = LuaContext::new();
+    let mut cxt = Context::new();
 
     let func = {
         cxt.eval("return function (a, b) return { a, b } end").ok();
@@ -147,7 +147,7 @@ fn custom_types() {
 
 #[test]
 fn rust_fn() {
-    let mut cxt = LuaContext::new();
+    let mut cxt = Context::new();
 
     cxt.set("foo", function(|a: i32| a + a));
     let func = cxt.get::<Function>("foo");

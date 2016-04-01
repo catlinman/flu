@@ -1,4 +1,4 @@
-use LuaContext;
+use Context;
 use ffi;
 
 use stack::Read;
@@ -7,7 +7,7 @@ use stack::Size;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct LuaRef<'a> {
-    cxt: &'a LuaContext,
+    cxt: &'a Context,
     key: i32,
 }
 
@@ -20,7 +20,7 @@ impl<'a> Drop for LuaRef<'a> {
 }
 
 impl<'a> Read<'a> for LuaRef<'a> {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         unsafe {
             let t = ffi::LUA_REGISTRYINDEX;
 
@@ -49,13 +49,13 @@ impl<'a> Read<'a> for LuaRef<'a> {
         }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         true
     }
 }
 
 impl<'a> Push for LuaRef<'a> {
-    fn push(&self, cxt: &LuaContext) {
+    fn push(&self, cxt: &Context) {
         unsafe {
             ffi::lua_rawgeti(cxt.handle, ffi::LUA_REGISTRYINDEX, self.key)
         }
@@ -70,7 +70,7 @@ impl<'a> Size for LuaRef<'a> {
 
 #[test]
 fn read_ref() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.push("Hello world!");
 

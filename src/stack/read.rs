@@ -1,4 +1,4 @@
-use LuaContext;
+use Context;
 use LuaValue;
 use LuaRef;
 use ffi;
@@ -9,18 +9,18 @@ use std::str;
 use std::mem;
 
 pub trait Read<'a> {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self;
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool;
+    fn read(cxt: &'a Context, idx: i32) -> Self;
+    fn check(cxt: &'a Context, idx: i32) -> bool;
 }
 
 impl<'a> Read<'a> for bool {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         unsafe {
             ffi::lua_toboolean(cxt.handle, idx) > 0
         }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         unsafe {
             ffi::lua_isboolean(cxt.handle, idx)
         }
@@ -30,11 +30,11 @@ impl<'a> Read<'a> for bool {
 macro_rules! integer_read {
     ($ty:ident) => (
         impl<'a> Read<'a> for $ty {
-            fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+            fn read(cxt: &'a Context, idx: i32) -> Self {
                 unsafe { ffi::lua_tointeger(cxt.handle, idx) as Self }
             }
 
-            fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+            fn check(cxt: &'a Context, idx: i32) -> bool {
                 unsafe { ffi::lua_isnumber(cxt.handle, idx) > 0 }
             }
         }
@@ -48,11 +48,11 @@ integer_read!(i32);
 macro_rules! number_read {
     ($ty:ident) => (
         impl<'a> Read<'a> for $ty {
-            fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+            fn read(cxt: &'a Context, idx: i32) -> Self {
                 unsafe { ffi::lua_tonumber(cxt.handle, idx) as Self }
             }
 
-            fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+            fn check(cxt: &'a Context, idx: i32) -> bool {
                 unsafe { ffi::lua_isnumber(cxt.handle, idx) > 0 }
             }
         }
@@ -63,7 +63,7 @@ number_read!(f32);
 number_read!(f64);
 
 impl<'a, 'b> Read<'a> for &'b str {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         unsafe {
             let slice = {
                 let mut size = 0;
@@ -74,7 +74,7 @@ impl<'a, 'b> Read<'a> for &'b str {
         }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         unsafe {
             ffi::lua_isstring(cxt.handle, idx) > 0
         }
@@ -82,7 +82,7 @@ impl<'a, 'b> Read<'a> for &'b str {
 }
 
 impl<'a> Read<'a> for String {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         unsafe {
             let slice = {
                 let mut size = 0;
@@ -93,7 +93,7 @@ impl<'a> Read<'a> for String {
         }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         unsafe {
             ffi::lua_isstring(cxt.handle, idx) > 0
         }
@@ -101,7 +101,7 @@ impl<'a> Read<'a> for String {
 }
 
 impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         unsafe {
             match ffi::lua_isnil(cxt.handle, idx) {
                 false => Some(cxt.peek::<T>(idx)),
@@ -110,7 +110,7 @@ impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
         }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         T::check(cxt, idx) ||
         unsafe {
             ffi::lua_isnil(cxt.handle, idx)
@@ -121,13 +121,13 @@ impl<'a, T> Read<'a> for Option<T> where T: Read<'a> {
 /*macro_rules! tuple_read {
     ($($name:ident)+) => (
         impl<'a, $($name: Read<'a>),*> Read<'a> for ($($name,)*) {
-            fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+            fn read(cxt: &'a Context, idx: i32) -> Self {
                 (
                     $(cxt.remove::<$name>(idx),)*
                 )
             }
 
-            fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+            fn check(cxt: &'a Context, idx: i32) -> bool {
                 let mut idx = 0;
                 true $(&& $name::check(cxt, { idx += 1; idx }))*
             }
@@ -151,7 +151,7 @@ tuple_read!(A B C D E F G H I J K L); */
 
 #[test]
 fn read_int() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.push(42i8);
     assert_eq!(cxt.pop::<i8>(), 42i8);
@@ -165,7 +165,7 @@ fn read_int() {
 
 #[test]
 fn read_num() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.push(42f64);
     assert_eq!(cxt.pop::<f64>(), 42f64);
@@ -182,7 +182,7 @@ fn read_num() {
 
 #[test]
 fn read_string() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.push(("Hello world!", "Hello rust!".to_string()));
 
@@ -192,7 +192,7 @@ fn read_string() {
 
 #[test]
 fn read_optional() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.push(("Hello world!", nil));
 

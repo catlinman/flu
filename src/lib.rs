@@ -31,11 +31,11 @@ mod value;
 mod borrow;
 mod function;
 
-pub use context::LuaContext;
-pub use collections::Table;
-pub use value::LuaValue;
-pub use borrow::LuaRef;
-pub use function::Function;
+pub use context::*;
+pub use collections::*;
+pub use value::*;
+pub use borrow::*;
+pub use function::*;
 
 pub struct nil;
 

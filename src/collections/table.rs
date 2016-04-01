@@ -1,4 +1,4 @@
-use LuaContext;
+use Context;
 use LuaValue;
 use LuaRef;
 use ffi;
@@ -17,12 +17,12 @@ use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Table<'a> {
-    pub cxt: &'a LuaContext,
+    pub cxt: &'a Context,
     pub ptr: LuaRef<'a>,
 }
 
 impl<'a> Table<'a> {
-    pub fn new(cxt: &'a LuaContext) -> Self {
+    pub fn new(cxt: &'a Context) -> Self {
         unsafe {
             ffi::lua_newtable(cxt.handle);
         }
@@ -30,7 +30,7 @@ impl<'a> Table<'a> {
         Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
-    pub fn from_map<K, V>(cxt: &'a LuaContext, map: &HashMap<K, V>) -> Self
+    pub fn from_map<K, V>(cxt: &'a Context, map: &HashMap<K, V>) -> Self
         where K: LuaIndex + Eq + Hash,
               V: Push + Size
     {
@@ -46,7 +46,7 @@ impl<'a> Table<'a> {
         Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
     }
 
-    pub fn from_vec<V>(cxt: &'a LuaContext, vec: &Vec<V>) -> Self
+    pub fn from_vec<V>(cxt: &'a Context, vec: &Vec<V>) -> Self
         where V: Push + Size
     {
         unsafe {
@@ -95,7 +95,7 @@ impl<'a> Table<'a> {
             ffi::lua_pushnil(self.cxt.handle);
         }
 
-        // TODO: make LuaContext immutable during iter borrow
+        // TODO: make Context immutable during iter borrow
         TableIterator {
             cxt: self.cxt,
             _pd: PhantomData
@@ -113,11 +113,11 @@ impl<'a> Table<'a> {
 }
 
 impl<'a> Read<'a> for Table<'a> {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         Table { cxt: cxt, ptr: LuaRef::read(cxt, idx) }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         unsafe {
             ffi::lua_istable(cxt.handle, idx)
         }
@@ -125,7 +125,7 @@ impl<'a> Read<'a> for Table<'a> {
 }
 
 impl<'a> Push for Table<'a> {
-    fn push(&self, cxt: &LuaContext) {
+    fn push(&self, cxt: &Context) {
         self.ptr.push(cxt)
     }
 }
@@ -137,7 +137,7 @@ impl<'a> Size for Table<'a> {
 }
 
 pub struct TableIterator<'a, T> {
-    cxt: &'a LuaContext,
+    cxt: &'a Context,
     _pd: PhantomData<T>
 }
 
@@ -168,7 +168,7 @@ impl<'a, T> Iterator for TableIterator<'a, T>
 
 #[test]
 fn len() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     let table = Table::new(&cxt);
 
@@ -181,7 +181,7 @@ fn len() {
 
 #[test]
 fn access() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     let table = Table::new(&cxt);
 
@@ -196,7 +196,7 @@ fn access() {
 
 #[test]
 fn iter() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     let table = Table::new(&cxt);
 
@@ -214,7 +214,7 @@ fn iter() {
 
 #[test]
 fn from_map() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     let mut map = HashMap::new();
     map.insert("foo", 5);
@@ -234,7 +234,7 @@ fn from_map() {
 
 #[test]
 fn from_vec() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     let vec = vec![2, 4, 6, 8];
     let table = Table::from_vec(&cxt, &vec);

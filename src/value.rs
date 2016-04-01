@@ -1,4 +1,4 @@
-use LuaContext;
+use Context;
 use LuaRef;
 use Function;
 use Table;
@@ -22,7 +22,7 @@ pub enum LuaValue<'a> {
 }
 
 impl<'a> Read<'a> for LuaValue<'a> {
-    fn read(cxt: &'a LuaContext, idx: i32) -> Self {
+    fn read(cxt: &'a Context, idx: i32) -> Self {
         unsafe {
             match ffi::lua_type(cxt.handle, idx) {
                 ffi::LUA_TNONE => LuaValue::None,
@@ -40,7 +40,7 @@ impl<'a> Read<'a> for LuaValue<'a> {
         }
     }
 
-    fn check(cxt: &'a LuaContext, idx: i32) -> bool {
+    fn check(cxt: &'a Context, idx: i32) -> bool {
         true
     }
 }
@@ -53,7 +53,7 @@ impl<'a> Size for LuaValue<'a> {
 
 #[test]
 fn read_value() {
-    let cxt = LuaContext::new();
+    let cxt = Context::new();
 
     cxt.push((nil, 45f32, "Hello world!"));
 
