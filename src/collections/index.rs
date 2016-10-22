@@ -1,6 +1,7 @@
 
 use Context;
 use ffi;
+use std::ffi::CString;
 
 pub trait LuaIndex {
     fn get(&self, cxt: &Context, idx: i32);
@@ -27,13 +28,13 @@ integer_index!(usize);
 impl<'a, 'b> LuaIndex for &'b str {
     fn get(&self, cxt: &Context, idx: i32) {
         unsafe {
-            ffi::lua_getfield(cxt.handle, idx, self.as_ptr() as *const i8)
+            ffi::lua_getfield(cxt.handle, idx, unsafe { CString::new(*self).unwrap().as_ptr() as _ })
         }
     }
 
     fn set(&self, cxt: &Context, idx: i32) {
         unsafe {
-            ffi::lua_setfield(cxt.handle, idx, self.as_ptr() as *const i8)
+            ffi::lua_setfield(cxt.handle, idx, unsafe { CString::new(*self).unwrap().as_ptr() as _ })
         }
     }
 }

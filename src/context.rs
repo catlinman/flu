@@ -49,13 +49,13 @@ impl Context {
         unimplemented!()
     }*/
 
-    pub fn eval(&mut self, code: &str) -> Result<(), &str> {
+    pub fn eval(&self, code: &str) -> Result<(), &str> {
         unsafe {
             let ret = ffi::luaL_dostring(self.handle, CString::new(code).unwrap().as_ptr());
 
             match ret {
-                0 => Ok(()),
-                _ => Err(self.pop::<&str>())
+                false => Ok(()),
+                true => Err(self.pop::<&str>())
             }
         }
     }
@@ -64,7 +64,7 @@ impl Context {
         where T: Read<'a> + Size
     {
         unsafe {
-            ffi::lua_getfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8);
+            ffi::lua_getfield(self.handle, ffi::LUA_GLOBALSINDEX, unsafe { CString::new(idx).unwrap().as_ptr() as _ });
         }
 
         self.pop::<T>()
@@ -73,13 +73,11 @@ impl Context {
     pub fn set<T>(&self, idx: &str, val: T)
         where T: Push
     {
-        idx.push(self);
         val.push(self);
 
         unsafe {
-            ffi::lua_setfield(self.handle, ffi::LUA_GLOBALSINDEX, idx.as_ptr() as *const i8);
+            ffi::lua_setfield(self.handle, ffi::LUA_GLOBALSINDEX, unsafe { CString::new(idx).unwrap().as_ptr() as _ });
         }
-
     }
 
     pub fn peek<'a, T>(&'a self, idx: i32) -> T
@@ -136,8 +134,22 @@ impl Context {
         let size = self.size();
 
         print!("[ ({}) ", size);
-        for i in 1..(size + 1) {
-            print!("{}: {:?} ", i, self.peek::<LuaValue>(i));
+        unsafe {
+            for i in 1..(size + 1) {
+                print!("{}: {:?} ", i,  match ffi::lua_type(self.handle, i) {
+                    ffi::LUA_TNONE => "none",
+                    ffi::LUA_TNIL => "nil",
+                    ffi::LUA_TBOOLEAN => "bool",
+                    ffi::LUA_TLIGHTUSERDATA => "lightuserdata",
+                    ffi::LUA_TNUMBER => "number",
+                    ffi::LUA_TSTRING => "string",
+                    ffi::LUA_TTABLE => "table",
+                    ffi::LUA_TFUNCTION => "function",
+                    ffi::LUA_TUSERDATA => "userdata",
+                    ffi::LUA_TTHREAD => "thread",
+                    _ => panic!("unknown type"),
+                });
+            }
         }
         println!(" ]");
     }
@@ -159,8 +171,13 @@ impl Drop for Context {
 fn get_globals() {
     let cxt = Context::new();
 
-    cxt.set("quxxy_macro_wizard", Table::new(&cxt));
-    assert_enum!(cxt.get::<LuaValue>("quxxy_macro_wizard"), LuaValue::Table);
+    cxt.set("foo", 1.32f32);
+    cxt.set("bar", "quux");
+
+    assert_eq!(cxt.size(), 0);
+
+    assert_eq!(cxt.get::<f32>("foo"), 1.32f32);
+    assert_eq!(cxt.get::<String>("bar"), "quux");
 
     assert_eq!(cxt.size(), 0);
 }

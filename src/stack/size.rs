@@ -41,6 +41,11 @@ impl<T> Size for Option<T> where T: Size {
     }
 }
 
+impl Size for () {
+    fn size() -> i32 {
+        0
+    }
+}
 macro_rules! tuple_size {
     ($($name:ident)+) => (
         impl<$($name: Size),*> Size for ($($name,)*) {

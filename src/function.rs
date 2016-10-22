@@ -68,42 +68,25 @@ impl<'a> Size for Function<'a> {
     }
 }
 
-pub fn function<F, A, R>(func: F) -> RustFunction<F, A, R>
-        where F: Fn(A) -> R, A: for<'b> Read<'b> + Size, R: Push {
-    RustFunction {
-        func: func,
-        marker: PhantomData
-    }
-}
-
-pub struct RustFunction<F, A, R> {
-    func: F,
-    marker: PhantomData<(A, R)>
-}
-
-impl<'a, F, A, R> Push for RustFunction<F, A, R>
-        where F: Fn(A) -> R, A: for<'b> Read<'b> + Size, R: Push {
+impl<F> Push for F
+        where for<'a> F: FnMut(&'a mut Context) -> i32 {
     fn push(&self, cxt: &Context) {
         unsafe {
-            let wrapped = wrapper::<R, A, F>;
-
+            let wrapper = fn_wrapper::<F>;
             let func: &mut F = mem::transmute(ffi::lua_newuserdata(cxt.handle, mem::size_of::<F>() as libc::size_t));
-            ptr::copy(&self.func, func, 1);
+            ptr::copy(&self as &F, func, 1);
 
-            ffi::lua_pushcclosure(cxt.handle, wrapped, 1);
+            ffi::lua_pushcclosure(cxt.handle, wrapper, 1);
         }
     }
 }
 
-unsafe extern fn wrapper<P, R, F>(L: *mut ffi::lua_State) -> libc::c_int
-        where P: Push, R: for<'a> Read<'a> + Size, F: Fn(R) -> P {
-    let cxt = Context::from_state_weak(L);
-    let func: &mut F = unsafe { mem::transmute(ffi::lua_touserdata(L, ffi::lua_upvalueindex(1))) };
+unsafe extern "C" fn fn_wrapper<F>(L: *mut ffi::lua_State) -> libc::c_int
+        where for<'a> F: FnMut(&'a mut Context) -> i32 {
+    let mut cxt = Context::from_state_weak(L);
+    let func: &mut F = mem::transmute(ffi::lua_touserdata(L, ffi::lua_upvalueindex(1)));
 
-    let args = cxt.pop::<R>();
-    cxt.push(func(args));
-
-    R::size()
+    func(&mut cxt) as libc::c_int
 }
 
 #[test]
@@ -118,6 +101,44 @@ fn simple() {
     assert_eq!(func.call::<i32, i32>(5).unwrap(), 25);
 }
 
+#[test]
+fn rust_fn() {
+    let mut cxt = Context::new();
+
+    cxt.set("foo", |cxt: &mut Context| {
+        let a = cxt.pop::<i32>();
+        cxt.push(a + a);
+        1
+    });
+    let func = cxt.get::<Function>("foo");
+
+    assert_eq!(func.call::<i32, i32>(10).unwrap(), 20);
+}
+
+#[test]
+fn rust_fn_2() {
+    let mut cxt = Context::new();
+
+    let table = Table::new(&cxt);
+    table.set("foo", |cxt: &mut Context| {
+        let s = cxt.pop::<i32>();
+        cxt.push(s * s);
+        1
+    });
+
+    cxt.set("tbl", table);
+
+    let val = {
+        cxt.eval("return tbl.foo(5)").unwrap();
+        cxt.pop::<i32>()
+    };
+
+    assert_eq!(val, 25);
+}
+
+
+
+/*
 #[test]
 fn multiple_args() {
     let mut cxt = Context::new();
@@ -153,5 +174,16 @@ fn rust_fn() {
     let func = cxt.get::<Function>("foo");
 
     assert_eq!(func.call::<i32, i32>(10).unwrap(), 20);
-}
+}*/
+
+/*#[test]
+fn rust_fn_args() {
+    let mut cxt = Context::new();
+
+    cxt.set("foo", function(|a: (i32, f32, f32)| a.0 as f32 + a.1 * a.2));
+    let func = cxt.get::<Function>("foo");
+
+    assert_eq!(func.call::<(i32, f32, f32), f64>((5, 10f32, 10f32)).unwrap(), 105f64);
+}*/
+
 

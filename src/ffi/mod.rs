@@ -193,6 +193,7 @@ extern "C" {
     pub fn luaopen_package(L: *mut lua_State) -> c_int;
     pub fn luaL_openlibs(L: *mut lua_State);
 
+    pub fn luaL_newmetatable(L: *mut lua_State, s: *const c_char) -> c_int;
     pub fn luaL_loadstring(L: *mut lua_State, s: *const c_char) -> c_int;
 
     pub fn luaL_ref(L: *mut lua_State, t: c_int) -> c_int;
@@ -291,7 +292,7 @@ pub unsafe fn lua_tostring(L: *mut lua_State, i: c_int) -> *const c_char {
 }
 
 #[inline(always)]
-pub unsafe fn luaL_dostring(L: *mut lua_State, s: *const c_char) -> c_int {
-    luaL_loadstring(L, s) & lua_pcall(L, 0, LUA_MULTRET, 0)
+pub unsafe fn luaL_dostring(L: *mut lua_State, s: *const c_char) -> bool {
+    luaL_loadstring(L, s) != 0 || lua_pcall(L, 0, LUA_MULTRET, 0) != 0
 }
 

@@ -10,6 +10,11 @@ pub trait Push {
     fn push(&self, cxt: &Context);
 }
 
+impl Push for () {
+    fn push(&self, _: &Context) {
+    }
+}
+
 impl Push for nil {
     fn push(&self, cxt: &Context) {
         unsafe {

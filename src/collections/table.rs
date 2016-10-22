@@ -75,13 +75,14 @@ impl<'a> Table<'a> {
     }
 
     pub fn set<T, K>(&'a self, idx: K, val: T)
-        where T: Push + Size,
+        where T: Push,
               K: LuaIndex
     {
         self.ptr.push(self.cxt);
         self.cxt.push(val);
 
         idx.set(self.cxt, -2);
+        self.cxt.dump();
 
         self.cxt.pop_discard(1);
     }
@@ -222,9 +223,6 @@ fn from_map() {
     let table = Table::from_map(&cxt, &map);
 
     assert_eq!(cxt.size(), 0);
-
-    // TODO: separate tables and contigious integral arrays as `objlen`
-    // (#-operator) doesn't take into account non-contigious keys
 
     // assert_eq!(table.len(), 2);
 
