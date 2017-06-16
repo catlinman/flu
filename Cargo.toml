@@ -7,6 +7,8 @@ version = "0.0.2"
 authors = ["Felix Kaaman <trundmatu@gmail.com>"]
 keywords = ["lua", "framework", "bindings"]
 license = "MIT OR Apache-2.0"
+
+links = "luajit"
 build = "build.rs"
 
 [build-dependencies]
