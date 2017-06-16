@@ -5,6 +5,8 @@ use Table;
 use ffi;
 use nil;
 
+use libc;
+
 use stack::Read;
 use stack::Size;
 
@@ -15,20 +17,23 @@ pub enum LuaValue<'a> {
     Bool(bool),
     Table(Table<'a>),
     Function(Function<'a>),
-    /*Userdata,
-    Thread,*/
+    LightUserdata(*mut libc::c_void),
+    /*Thread,*/
     Nil,
     None,
 }
 
 impl<'a> Read<'a> for LuaValue<'a> {
-    fn read(cxt: &'a Context, idx: i32) -> Self {
+    type Output = LuaValue<'a>;
+
+    fn read(cxt: &'a mut Context, idx: i32) -> Self {
         unsafe {
-            match ffi::lua_type(cxt.handle, idx) {
+            let handle = cxt.handle;
+            match ffi::lua_type(handle, idx) {
                 ffi::LUA_TNONE => LuaValue::None,
                 ffi::LUA_TNIL => LuaValue::Nil,
                 ffi::LUA_TBOOLEAN => LuaValue::Bool(bool::read(cxt, idx)),
-                ffi::LUA_TLIGHTUSERDATA => unimplemented!(),
+                ffi::LUA_TLIGHTUSERDATA => LuaValue::LightUserdata(ffi::lua_touserdata(cxt.handle, idx)),
                 ffi::LUA_TNUMBER => LuaValue::Number(f64::read(cxt, idx)),
                 ffi::LUA_TSTRING => LuaValue::String(<&str>::read(cxt, idx)),
                 ffi::LUA_TTABLE => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),
@@ -53,7 +58,7 @@ impl<'a> Size for LuaValue<'a> {
 
 #[test]
 fn read_value() {
-    let cxt = Context::new();
+    let mut cxt = Context::new();
 
     cxt.push((nil, 45f32, "Hello world!"));
 

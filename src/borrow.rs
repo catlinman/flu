@@ -20,7 +20,9 @@ impl<'a> Drop for LuaRef<'a> {
 }
 
 impl<'a> Read<'a> for LuaRef<'a> {
-    fn read(cxt: &'a Context, idx: i32) -> Self {
+    type Output = LuaRef<'a>;
+
+    fn read(cxt: &'a mut Context, idx: i32) -> Self::Output {
         unsafe {
             let t = ffi::LUA_REGISTRYINDEX;
 
@@ -32,14 +34,15 @@ impl<'a> Read<'a> for LuaRef<'a> {
                 false => {
                     ffi::lua_rawgeti(cxt.handle, t, ffi::FREELIST_REF);
                     let r = match cxt.pop::<i32>() {
-                        0 => {
+                        Some(0) => {
                             ffi::lua_objlen(cxt.handle, t) as i32 + 1
                         }
-                        a @ _ => {
+                        Some(a @ _) => {
                             ffi::lua_rawgeti(cxt.handle, t, a);
                             ffi::lua_rawseti(cxt.handle, t, ffi::FREELIST_REF);
                             a
                         }
+                        None => { unreachable!() }
                     };
                     ffi::lua_rawseti(cxt.handle, t, r);
 
@@ -55,7 +58,7 @@ impl<'a> Read<'a> for LuaRef<'a> {
 }
 
 impl<'a> Push for LuaRef<'a> {
-    fn push(&self, cxt: &Context) {
+    fn push(&self, cxt: &mut Context) {
         unsafe {
             ffi::lua_rawgeti(cxt.handle, ffi::LUA_REGISTRYINDEX, self.key)
         }
@@ -70,7 +73,7 @@ impl<'a> Size for LuaRef<'a> {
 
 #[test]
 fn read_ref() {
-    let cxt = Context::new();
+    let mut cxt = Context::new();
 
     cxt.push("Hello world!");
 

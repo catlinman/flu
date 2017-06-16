@@ -1,189 +1,168 @@
-use Context;
-use LuaRef;
-use Table;
-use ffi;
-use nil;
+use ::{
+    ffi, 
+    nil, 
+    typename,
 
-use stack::Read;
-use stack::Push;
-use stack::Size;
+    FunctionStack,
+    Ref, 
+    State, 
+    UncheckedFunctionStack, 
+    WeakState
+};
+
+use errors::*;
+use transfer::{
+    FromLua,
+    LuaSize,
+    ToLua
+};
 
 use libc;
 
-use std::ptr;
-use std::mem;
 use std::marker::PhantomData;
+use std::mem;
+use std::ptr;
 
-#[derive(Debug, Eq, PartialEq)]
+pub type LuaUncheckedFn = extern "C" fn(UncheckedFunctionStack) -> i32;
+pub type LuaFn = Fn(FunctionStack) -> Result<i32>;
+
+#[derive(Debug)]
 pub struct Function<'a> {
-    cxt: &'a Context,
-    ptr: LuaRef<'a>
+    ptr: Ref<'a>,
 }
 
-impl<'a> Function<'a> {
-    pub fn call<T: Push + Size, R: Read<'a> + Size>(&self, args: T) -> Result<R, &'a str> {
-        self.ptr.push(self.cxt);
-        self.cxt.push(args);
+impl<'a, 'b> Function<'a> {
+    pub fn call<A, R>(&self, state: &'b State, args: A) -> Result<R>
+    where
+        A: ToLua + LuaSize,
+        R: FromLua<'b> + LuaSize,
+    {
+        self.ptr.write(state);
+        args.write(state);
 
         unsafe {
-            let ret = ffi::lua_pcall(self.cxt.handle, T::size(), R::size(), 0);
+            let ret = ffi::lua_pcall(state.L, A::size(), R::size(), 0);
 
             match ret {
-                0 => Ok(R::read(self.cxt, -1)),
-                ffi::LUA_ERRRUN |
-                ffi::LUA_ERRMEM |
-                ffi::LUA_ERRERR => Err(self.cxt.pop::<&str>()),
-                _ => unreachable!()
+                0 => Ok(R::read(state, -1)?),
+                ffi::LUA_ERRRUN | ffi::LUA_ERRMEM | ffi::LUA_ERRERR => Err(
+                    ErrorKind::RuntimeError(
+                        String::read(&state, -1)?,
+                    ).into(),
+                ),
+                _ => unreachable!(),
             }
         }
     }
 }
 
-/*impl<'a, T> Push for T where T: Fn(&'a Context) {
-
-}*/
-
-impl<'a> Read<'a> for Function<'a> {
-    fn read(cxt: &'a Context, idx: i32) -> Self {
+impl<'a> FromLua<'a> for Function<'a> {
+    fn read(state: &'a WeakState, idx: i32) -> Result<Self> {
         unsafe {
-            let func: LuaRef<'a> = cxt.remove(idx);
+            let ty = ffi::lua_type(state.L, idx);
+            if ty == ffi::LUA_TFUNCTION {
+                let func = Function { ptr: Ref::read(state, idx).unwrap() };
 
-            Function {
-                cxt: cxt,
-                ptr: func
+                Ok(func)
+            } else {
+                Err(
+                    ErrorKind::TypeError("function".into(), typename(state, idx)).into(),
+                )
             }
         }
     }
+}
 
-    fn check(cxt: &'a Context, idx: i32) -> bool {
+impl<'a> ToLua for Function<'a> {
+    fn write(&self, state: &WeakState) {
+        self.ptr.write(state);
+    }
+}
+
+impl ToLua for LuaUncheckedFn {
+    fn write(&self, state: &WeakState) {
         unsafe {
-            ffi::lua_type(cxt.handle, idx) == ffi::LUA_TFUNCTION
+            ffi::lua_pushcfunction(state.L, mem::transmute(*self));
         }
     }
 }
 
-impl<'a> Size for Function<'a> {
-    fn size() -> i32 {
-        LuaRef::size()
-    }
-}
-
-impl<F> Push for F
-        where for<'a> F: FnMut(&'a mut Context) -> i32 {
-    fn push(&self, cxt: &Context) {
+impl<F: Fn(FunctionStack) -> Result<i32>> ToLua for F {
+    fn write(&self, state: &WeakState) {
         unsafe {
             let wrapper = fn_wrapper::<F>;
-            let func: &mut F = mem::transmute(ffi::lua_newuserdata(cxt.handle, mem::size_of::<F>() as libc::size_t));
+            let func: &mut F = mem::transmute(ffi::lua_newuserdata(
+                state.L,
+                mem::size_of::<F>() as libc::size_t,
+            ));
             ptr::copy(&self as &F, func, 1);
 
-            ffi::lua_pushcclosure(cxt.handle, wrapper, 1);
+            ffi::lua_pushcclosure(state.L, wrapper, 1);
         }
     }
 }
 
-unsafe extern "C" fn fn_wrapper<F>(L: *mut ffi::lua_State) -> libc::c_int
-        where for<'a> F: FnMut(&'a mut Context) -> i32 {
-    let mut cxt = Context::from_state_weak(L);
+unsafe extern "C" fn fn_wrapper<F: Fn(FunctionStack) -> Result<i32>>(
+    L: *mut ffi::lua_State,
+) -> libc::c_int {
+    let mut cxt = FunctionStack { state: WeakState::from_state(L) };
     let func: &mut F = mem::transmute(ffi::lua_touserdata(L, ffi::lua_upvalueindex(1)));
 
-    func(&mut cxt) as libc::c_int
+    match func(cxt) {
+        Ok(v) => v,
+        Err(e) => {
+            // we longjmp after wrapped function errors and push the error
+            // message to the error handler
+            format!("{}", e).write(&WeakState::from_state(L));
+            ffi::lua_error(L);
+
+            -1
+        }
+    }
 }
 
-#[test]
-fn simple() {
-    let mut cxt = Context::new();
+mod bench {
+    use super::*;
+    use test::Bencher;
 
-    let func = {
-        cxt.eval("return function(a) return a * a end").ok();
-        cxt.pop::<Function>()
-    };
+    #[bench]
+    fn checked(b: &mut Bencher) {
+        fn test(stack: FunctionStack) -> Result<i32> {
+            let sz = stack.check_size(1..3)?;
 
-    assert_eq!(func.call::<i32, i32>(5).unwrap(), 25);
+            let a: i32 = stack.arg(1)?;
+            let b: i32 = stack.arg(2)?;
+            let c: String = stack.arg(3)?;
+
+            //println!("{:?}, {:?}, {:?}", a, b, c);
+
+            Ok(0)
+        }
+
+        let mut state = State::new();
+        state.set("test", test);
+
+        b.iter(|| state.eval("for i in 1,512 do test(1, 2, \"hello\") end"));
+    }
+
+    #[bench]
+    fn unchecked(b: &mut Bencher) {
+        extern "C" fn test(stack: UncheckedFunctionStack) -> i32 {
+            let sz = stack.check_size(1..3);
+
+            let a: i32 = stack.arg(1);
+            let b: i32 = stack.arg(2);
+            let c: String = stack.arg(3);
+
+            //println!("{:?}, {:?}, {:?}", a, b, c);
+
+            //let a = flu::arg::<i32>(1)?;
+            0
+        }
+
+        let mut state = State::new();
+        state.set("test", test as LuaUncheckedFn);
+
+        b.iter(|| state.eval("for i in 1,512 do test(1, 2, \"hello\") end"));
+    }
 }
-
-#[test]
-fn rust_fn() {
-    let mut cxt = Context::new();
-
-    cxt.set("foo", |cxt: &mut Context| {
-        let a = cxt.pop::<i32>();
-        cxt.push(a + a);
-        1
-    });
-    let func = cxt.get::<Function>("foo");
-
-    assert_eq!(func.call::<i32, i32>(10).unwrap(), 20);
-}
-
-#[test]
-fn rust_fn_2() {
-    let mut cxt = Context::new();
-
-    let table = Table::new(&cxt);
-    table.set("foo", |cxt: &mut Context| {
-        let s = cxt.pop::<i32>();
-        cxt.push(s * s);
-        1
-    });
-
-    cxt.set("tbl", table);
-
-    let val = {
-        cxt.eval("return tbl.foo(5)").unwrap();
-        cxt.pop::<i32>()
-    };
-
-    assert_eq!(val, 25);
-}
-
-
-
-/*
-#[test]
-fn multiple_args() {
-    let mut cxt = Context::new();
-
-    let func = {
-        cxt.eval("return function(a, b, c) return (a + b) * c end").ok();
-        cxt.pop::<Function>()
-    };
-
-    assert_eq!(func.call::<(i32, i32, f64), f64>((5, 10, 0.1)).unwrap(), 1.5);
-}
-
-#[test]
-fn custom_types() {
-    let mut cxt = Context::new();
-
-    let func = {
-        cxt.eval("return function (a, b) return { a, b } end").ok();
-        cxt.pop::<Function>()
-    };
-
-    let table: Table = func.call((5, 10)).unwrap();
-
-    assert_eq!(table.get::<i32, _>(1), 5);
-    assert_eq!(table.get::<i32, _>(2), 10);
-}
-
-#[test]
-fn rust_fn() {
-    let mut cxt = Context::new();
-
-    cxt.set("foo", function(|a: i32| a + a));
-    let func = cxt.get::<Function>("foo");
-
-    assert_eq!(func.call::<i32, i32>(10).unwrap(), 20);
-}*/
-
-/*#[test]
-fn rust_fn_args() {
-    let mut cxt = Context::new();
-
-    cxt.set("foo", function(|a: (i32, f32, f32)| a.0 as f32 + a.1 * a.2));
-    let func = cxt.get::<Function>("foo");
-
-    assert_eq!(func.call::<(i32, f32, f32), f64>((5, 10f32, 10f32)).unwrap(), 105f64);
-}*/
-
-

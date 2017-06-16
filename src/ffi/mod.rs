@@ -17,11 +17,11 @@ pub const LUA_REGISTRYINDEX: c_int = -10000;
 pub const LUA_ENVIRONINDEX: c_int = -10001;
 pub const LUA_GLOBALSINDEX: c_int = -10002;
 
-pub const LUA_YIELD: c_int =     1;
-pub const LUA_ERRRUN: c_int =    2;
+pub const LUA_YIELD: c_int = 1;
+pub const LUA_ERRRUN: c_int = 2;
 pub const LUA_ERRSYNTAX: c_int = 3;
-pub const LUA_ERRMEM: c_int =    4;
-pub const LUA_ERRERR: c_int =    5;
+pub const LUA_ERRMEM: c_int = 4;
+pub const LUA_ERRERR: c_int = 5;
 
 pub const LUA_MULTRET: c_int = -1;
 
@@ -47,28 +47,37 @@ pub struct ZIO;
 
 #[repr(C)]
 pub struct lua_Debug {
-    event: c_int,
-    name: *const c_char,
-    namewhat: *const c_char,
-    what: *const c_char,
-    source: *const c_char,
-    currentline: c_int,
-    nups: c_int,
-    linedefined: c_int,
-    lastlinedefined: c_int,
-    short_src: [c_char; 60],
-    i_ci: c_int,
+    pub event: c_int,
+    pub name: *const c_char,
+    pub namewhat: *const c_char,
+    pub what: *const c_char,
+    pub source: *const c_char,
+    pub currentline: c_int,
+    pub nups: c_int,
+    pub linedefined: c_int,
+    pub lastlinedefined: c_int,
+    pub short_src: [c_char; 60],
+    pub i_ci: c_int,
 }
 
 pub type lua_CFunction = unsafe extern "C" fn(L: *mut lua_State) -> c_int;
 
-pub type lua_Reader = unsafe extern "C" fn(L: *mut lua_State, ud: *mut c_void, sz: *mut size_t) -> *const c_char;
+pub type lua_Reader = unsafe extern "C" fn(L: *mut lua_State, ud: *mut c_void, sz: *mut size_t)
+                                           -> *const c_char;
 pub type lua_Chunkreader = lua_Reader;
 
-pub type lua_Writer = unsafe extern "C" fn(L: *mut lua_State, p: *const c_void, sz: size_t, ud: *mut c_void) -> c_int;
+pub type lua_Writer = unsafe extern "C" fn(L: *mut lua_State,
+                                           p: *const c_void,
+                                           sz: size_t,
+                                           ud: *mut c_void)
+                                           -> c_int;
 pub type lua_Chunkwriter = lua_Writer;
 
-pub type lua_Alloc = unsafe extern "C" fn(ud: *mut c_void, ptr: *mut c_void, osize: size_t, nsize: size_t) -> *mut c_void;
+pub type lua_Alloc = unsafe extern "C" fn(ud: *mut c_void,
+                                          ptr: *mut c_void,
+                                          osize: size_t,
+                                          nsize: size_t)
+                                          -> *mut c_void;
 pub type lua_Hook = unsafe extern "C" fn(L: *mut lua_State, ar: *mut lua_Debug);
 
 extern "C" {
@@ -146,7 +155,12 @@ extern "C" {
     pub fn lua_call(L: *mut lua_State, nargs: c_int, nresults: c_int);
     pub fn lua_pcall(L: *mut lua_State, nargs: c_int, nresults: c_int, errfunc: c_int) -> c_int;
     pub fn lua_cpcall(L: *mut lua_State, func: lua_CFunction, ud: *mut c_void) -> c_int;
-    pub fn lua_load(L: *mut lua_State, reader: lua_Reader, dt: *mut c_void, chunkname: *const c_char) -> c_int;
+    pub fn lua_load(
+        L: *mut lua_State,
+        reader: lua_Reader,
+        dt: *mut c_void,
+        chunkname: *const c_char,
+    ) -> c_int;
     pub fn lua_dump(L: *mut lua_State, writer: lua_Writer, data: *mut c_void) -> c_int;
 
     // coroutine functions
@@ -198,6 +212,10 @@ extern "C" {
 
     pub fn luaL_ref(L: *mut lua_State, t: c_int) -> c_int;
     pub fn luaL_unref(L: *mut lua_State, t: c_int, tref: c_int);
+
+    pub fn luaL_error(L: *mut lua_State, fmt: *const c_char, ...) -> c_int;
+    pub fn luaL_argerror(L: *mut lua_State, narg: c_int, extramsg: *const c_char) -> c_int;
+    pub fn luaL_typerror(L: *mut lua_State, narg: c_int, tname: *const c_char) -> c_int;
 }
 
 #[inline(always)]
@@ -295,4 +313,3 @@ pub unsafe fn lua_tostring(L: *mut lua_State, i: c_int) -> *const c_char {
 pub unsafe fn luaL_dostring(L: *mut lua_State, s: *const c_char) -> bool {
     luaL_loadstring(L, s) != 0 || lua_pcall(L, 0, LUA_MULTRET, 0) != 0
 }
-
