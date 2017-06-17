@@ -2,7 +2,7 @@ use ::{
     ffi, State, WeakState
 };
 use errors::*;
-use transfer::{FromLua, ToLua};
+use transfer::{FromLua, ToLua, LuaSize};
 
 use std::ffi::CString;
 use std::mem;
@@ -21,7 +21,7 @@ pub struct TableContext {
 impl TableContext {
     pub fn get<'a, V>(&'a self, idx: &str) -> Result<V>
         where
-            V: FromLua<'a>,
+            V: FromLua<'a> + LuaSize,
     {
         unsafe {
             ffi::patch::flu_getlfield(
@@ -38,7 +38,13 @@ impl TableContext {
             );*/
         }
 
-        V::read(&self.state, -1)
+        let r = V::read(&self.state, -1);
+
+        unsafe {
+            ffi::lua_pop(self.state.L, V::size());
+        }
+
+        r
     }
 
     pub fn set<'a, V>(&'a self, idx: &'a str, val: V)
@@ -105,7 +111,7 @@ mod bench {
                 root.set("two", Table::new(|cxt| {
                     cxt.set("three", Table::new(|cxt| {
                         cxt.set("four", Table::new(|cxt| {
-                            //cxt.set("onebar", root.get::<i32>("foobartwobar").unwrap());
+                            cxt.set("onebar", root.get::<i32>("foobartwobar").unwrap());
                         }));
                     }));
                 }));

@@ -21,8 +21,11 @@ fn example() -> Result<()> {
         Ok(1)
     }
 
+    state.set("test", 5);
+
     state.set("lib", flu::Table::new(|cxt| {
         cxt.set("add", add);
+        cxt.set("test2", state.get::<f64>("test").unwrap());
     }));
 
     /*state.set("testtable", flu::Table::new(|cxt| {

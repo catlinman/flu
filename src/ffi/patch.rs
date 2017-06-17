@@ -250,6 +250,7 @@ extern "C" {
 }
 
 #[no_mangle]
+#[inline(never)]
 pub unsafe extern "C" fn flu_setlfield(L: *mut super::lua_State, idx: libc::c_int, k: *const libc::c_char, len: libc::size_t) {
     let L: *mut luajit_State = L as _;
     let mut o: *mut TValue = ::std::mem::uninitialized();
@@ -269,6 +270,7 @@ pub unsafe extern "C" fn flu_setlfield(L: *mut super::lua_State, idx: libc::c_in
 }
 
 #[no_mangle]
+#[inline(never)]
 pub unsafe extern "C" fn flu_getlfield(L: *mut super::lua_State, idx: libc::c_int, k: *const libc::c_char, len: libc::size_t) {
     let L: *mut luajit_State = L as _;
 
@@ -299,6 +301,11 @@ unsafe extern "C" fn G(L: *mut luajit_State) -> *mut _global_State {
 }
 
 #[inline(always)]
+unsafe extern "C" fn registry(L: *mut luajit_State) -> *mut TValue {
+    &mut (*G(L)).registrytv
+}
+
+#[inline(always)]
 unsafe extern "C" fn niltv(L: *mut luajit_State) -> *mut TValue {
     &mut (*G(L)).nilnode.val
 }
@@ -319,7 +326,7 @@ unsafe extern "C" fn index2adr(L: *mut luajit_State, idx: libc::c_int) -> *mut T
         settabV(L, o, tabref((*L).env));
         o
     } else if idx == super::LUA_REGISTRYINDEX {
-        unimplemented!();
+        registry(L)
     } else {
         if idx == super::LUA_ENVIRONINDEX {
             unimplemented!();

@@ -38,6 +38,12 @@ macro_rules! assert_enum {
 pub fn pcall_errck<'a>(state: &'a WeakState, ret: libc::c_int) -> Result<()> {
     match ret {
         0 => Ok(()),
+        ffi::LUA_ERRSYNTAX => Err(
+            ErrorKind::SyntaxError(
+                <String as transfer::FromLua<'a>>::read(&state, -1)
+                    .chain_err(|| "unable to read error message from stack")?,
+            ).into(),
+        ),
         ffi::LUA_ERRRUN => Err(
             ErrorKind::RuntimeError(
                 <String as transfer::FromLua<'a>>::read(&state, -1)

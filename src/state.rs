@@ -84,23 +84,25 @@ impl WeakState {
         WeakState { L: state }
     }
 
-    pub fn eval<S>(&self, code: S) -> Result<()>
-    where
-        S: Into<String>,
+    pub fn eval(&self, code: &str) -> Result<()>
+    //where S: Into<String>
     {
         unsafe {
-            let ret = ffi::luaL_dostring(self.L, CString::new(code.into()).unwrap().as_ptr() as _);
+            //pub fn luaL_loadbuffer(L: *mut lua_State, buf: *const c_char, size: size_t, name: *const c_char) -> c_int;
 
-            match ret {
-                false => Ok(()),
-                true => Err(ErrorKind::RuntimeError(String::read(self, -1)?).into()),
-            }
+            let ret = ffi::luaL_loadbuffer(self.L, code.as_ptr() as _, code.len(), c_str!("<eval>"));
+            ::pcall_errck(self, ret)?;
+
+            let ret = ffi::lua_pcall(self.L, 0, ffi::LUA_MULTRET, 0);
+            ::pcall_errck(self, ret)?;
+
+            Ok(())
         }
     }
 
     pub fn get<'a, V>(&'a self, idx: &str) -> Result<V>
     where
-        V: FromLua<'a>,
+        V: FromLua<'a> + LuaSize
     {
         unsafe {
             ffi::patch::flu_getlfield(
@@ -117,7 +119,13 @@ impl WeakState {
             );*/
         }
 
-        V::read(self, -1)
+        let r = V::read(self, -1);
+
+        unsafe {
+            ffi::lua_pop(self.L, V::size());
+        }
+
+        r
     }
 
     pub fn set<'a, V>(&'a self, idx: &str, val: V)

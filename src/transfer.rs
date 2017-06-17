@@ -48,10 +48,9 @@ impl<'a> FromLua<'a> for String {
                 let slice = {
                     let mut size = 0;
                     let cs = ffi::lua_tolstring(state.L, idx, &mut size);
-                    ffi::lua_pop(state.L, 1);
-                    slice::from_raw_parts(cs, size as usize)
+                    slice::from_raw_parts(cs as *const u8, size as usize)
                 };
-                Ok(String::from_utf8_lossy(mem::transmute(slice)).into_owned())
+                Ok(String::from_utf8_unchecked(slice.to_vec()))
             } else {
                 Err(
                     ErrorKind::TypeError("string".into(), typename(state, idx)).into(),
@@ -69,9 +68,9 @@ impl<'a> FromLuaFunctionStack<'a> for String {
             let slice = {
                 let mut size = 0;
                 let cs = ffi::lua_tolstring(state.L, idx, &mut size);
-                slice::from_raw_parts(cs, size as usize)
+                slice::from_raw_parts(cs as *const u8, size as usize)
             };
-            String::from_utf8_lossy(mem::transmute(slice)).into_owned()
+            String::from_utf8_unchecked(slice.to_vec())
         }
     }
 
@@ -82,9 +81,9 @@ impl<'a> FromLuaFunctionStack<'a> for String {
             let slice = {
                 let mut size = 0;
                 let cs = ffi::lua_tolstring(state.L, idx, &mut size);
-                slice::from_raw_parts(cs, size as usize)
+                slice::from_raw_parts(cs as *const u8, size as usize)
             };
-            Ok(String::from_utf8_lossy(mem::transmute(slice)).into_owned())
+            Ok(String::from_utf8_unchecked(slice.to_vec()))
         }
     }
 }
@@ -132,7 +131,7 @@ impl ToLua for String {
         unsafe {
             ffi::lua_pushlstring(
                 state.L,
-                CString::new(self.clone()).unwrap().as_ptr() as _,
+                self.as_ptr() as _,
                 self.len(),
             )
         }
@@ -181,6 +180,12 @@ macro_rules! integer_push {
                 unsafe { ffi::lua_pushinteger(state.L, *self as ffi::lua_Integer) }
             }
         }
+
+        impl LuaSize for $ty {
+            fn size() -> i32 {
+                1
+            }
+        }
     )
 }
 
@@ -224,6 +229,12 @@ macro_rules! number_push {
         impl ToLua for $ty {
             fn write(&self, state: &WeakState) {
                 unsafe { ffi::lua_pushnumber(state.L, *self as ffi::lua_Number) }
+            }
+        }
+
+        impl LuaSize for $ty {
+            fn size() -> i32 {
+                1
             }
         }
     )

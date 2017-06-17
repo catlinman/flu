@@ -142,7 +142,11 @@ mod bench {
         let mut state = State::new();
         state.set("test", test);
 
-        b.iter(|| state.eval("for i in 1,512 do test(1, 2, \"hello\") end"));
+        b.iter(|| state.eval(r#"
+for i=1,256 do
+    test(1, 2, "hello")
+end
+        "#).unwrap());
     }
 
     #[bench]
@@ -163,6 +167,10 @@ mod bench {
         let mut state = State::new();
         state.set("test", test as LuaUncheckedFn);
 
-        b.iter(|| state.eval("for i in 1,512 do test(1, 2, \"hello\") end"));
+        b.iter(|| state.eval(r#"
+for i=1,256 do
+    test(1, 2, "hello")
+end
+        "#).unwrap());
     }
 }

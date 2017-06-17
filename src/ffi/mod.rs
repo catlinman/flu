@@ -209,7 +209,9 @@ extern "C" {
     pub fn luaopen_package(L: *mut lua_State) -> c_int;
     pub fn luaL_openlibs(L: *mut lua_State);
 
+
     pub fn luaL_newmetatable(L: *mut lua_State, s: *const c_char) -> c_int;
+    pub fn luaL_loadbuffer(L: *mut lua_State, buf: *const c_char, size: size_t, name: *const c_char) -> c_int;
     pub fn luaL_loadstring(L: *mut lua_State, s: *const c_char) -> c_int;
 
     pub fn luaL_ref(L: *mut lua_State, t: c_int) -> c_int;
