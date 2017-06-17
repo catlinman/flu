@@ -1,15 +1,6 @@
-use ::{
-    ffi,
-    typename
-};
-
+use ::{ffi, typename};
 use errors::*;
-use transfer::{
-    FromLua, 
-    FromLuaFunctionStack, 
-    LuaSize,
-    ToLua 
-};
+use transfer::{FromLua, FromLuaFunctionStack, LuaSize, ToLua};
 
 use std::ffi::CString;
 use std::mem;
@@ -36,6 +27,7 @@ pub struct WeakState {
 impl ::std::ops::Deref for State {
     type Target = WeakState;
 
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.state
     }
@@ -75,9 +67,6 @@ fn dump_stack(state: &WeakState, indent: i32) {
 
 impl State {
     pub fn new() -> Self {
-        let L = unsafe { ffi::luaL_newstate() };
-        unsafe { ffi::luaL_openlibs(L) };
-
         State { state: WeakState::new() }
     }
 }
@@ -90,6 +79,7 @@ impl WeakState {
         WeakState { L: L }
     }
 
+    #[inline(always)]
     pub fn from_state(state: *mut ffi::lua_State) -> Self {
         WeakState { L: state }
     }
@@ -113,29 +103,42 @@ impl WeakState {
         V: FromLua<'a>,
     {
         unsafe {
-            ffi::lua_getfield(
+            ffi::patch::flu_getlfield(
+                self.L,
+                ffi::LUA_GLOBALSINDEX,
+                idx.as_ptr() as _,
+                idx.len()
+            );
+
+            /*ffi::lua_getfield(
                 self.L,
                 ffi::LUA_GLOBALSINDEX,
                 CString::new(idx).unwrap().as_ptr() as _,
-            );
+            );*/
         }
 
         V::read(self, -1)
     }
 
-    pub fn set<'a, S, V>(&'a self, idx: S, val: V)
+    pub fn set<'a, V>(&'a self, idx: &str, val: V)
     where
-        S: Into<String>,
         V: ToLua,
     {
         val.write(&self);
 
         unsafe {
-            ffi::lua_setfield(
+            ffi::patch::flu_setlfield(
+                self.L,
+                ffi::LUA_GLOBALSINDEX,
+                idx.as_ptr() as _,
+                idx.len()
+            );
+
+            /*ffi::lua_setfield(
                 self.L,
                 ffi::LUA_GLOBALSINDEX,
                 CString::new(idx.into()).unwrap().as_ptr() as _,
-            );
+            );*/
         }
     }
 

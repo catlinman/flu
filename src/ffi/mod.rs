@@ -6,6 +6,8 @@ use libc::{c_int, c_char, c_void, c_double, size_t, ptrdiff_t};
 
 use std::ptr;
 
+pub mod patch;
+
 #[macro_export]
 macro_rules! c_str {
     ($str:expr) => (concat!($str, '\0').as_ptr() as *const i8)

@@ -1,7 +1,9 @@
-#![feature(unboxed_closures)]
-#![feature(try_trait)]
-#![recursion_limit = "1024"]
+#![feature(attr_literals)]
+#![feature(repr_align)]
+#![feature(untagged_unions)]
 #![feature(test)]
+#![recursion_limit = "1024"]
+
 
 extern crate test;
 #[macro_use]
