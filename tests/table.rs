@@ -37,3 +37,53 @@ fn metatable() {
         Ok(())
     })
 }
+
+#[test]
+fn metatable_class() {
+    testbed::run(|state| {
+        state.set("Class", Table::new(|meta_cxt| {
+            fn new(stack: FunctionStack) -> Result<i32> {
+                stack.state.dump();
+
+                let arg = stack.arg::<String>(2).unwrap_or(String::from("no bunny :-("));
+
+                stack.push(Table::new(|cxt| {
+                    cxt.set("bunny", arg.clone());
+                    cxt.set_meta(stack.get::<Table>("Class").unwrap());
+
+                    /* FIXME: broken
+                    stack.with::<Table, _, _>("Class", |meta| {
+
+                        cxt.set_meta(meta.as_table());
+
+                        Ok(())
+                    }).unwrap();*/
+                }));
+
+
+                Ok(1)
+            }
+
+            fn bunny(stack: FunctionStack) -> Result<i32> {
+                let n = stack.with_arg::<Table, _, _>(1, |cxt| {
+                    cxt.get::<String>("bunny")
+                })?;
+
+                stack.push(n);
+
+                Ok(1)
+            }
+
+            meta_cxt.set("__index", meta_cxt.as_table());
+            meta_cxt.set("new", new);
+            meta_cxt.set("get_bun", bunny);
+        }));
+
+
+        assert_eq!(state.eval::<String>(
+            "local b = Class:new('abc') return b:get_bun()"
+        )?, "abc");
+
+        Ok(())
+    })
+}

@@ -166,6 +166,33 @@ impl WeakState {
         }
     }
 
+    pub fn with<'b, A, T, F>(&'b self, idx: &str, func: F) -> Result<T>
+        where A: FromLuaFunctionStack<'b> + LuaSize, F: Fn(A::WithContext) -> Result<T>
+    {
+        unsafe {
+            ffi::patch::flu_getlfield(
+                self.L,
+                ffi::LUA_GLOBALSINDEX,
+                idx.as_ptr() as _,
+                idx.len()
+            );
+
+            /*ffi::lua_getfield(
+                self.L,
+                ffi::LUA_GLOBALSINDEX,
+                CString::new(idx).unwrap().as_ptr() as _,
+            );*/
+        }
+
+        let r = A::with_arg::<F, T>(&self, -1, func);
+
+        unsafe {
+            ffi::lua_pop(self.L, A::size());
+        }
+
+        r
+    }
+
     pub fn dump(&self) {
         println!("{}", "========== Stack Dump ==========");
         println!("{}", "[");

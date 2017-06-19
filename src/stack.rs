@@ -63,6 +63,16 @@ impl UncheckedFunctionStack {
     }
 }
 
+
+impl ::std::ops::Deref for FunctionStack {
+    type Target = WeakState;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
 impl FunctionStack {
     pub fn check_size(&self, range: ::std::ops::Range<i32>) -> Result<i32> {
         unsafe {

@@ -16,7 +16,7 @@ pub struct Table<'a> {
 }
 
 pub struct TableContext {
-    state: WeakState,
+    pub state: WeakState,
     root: i32
 }
 
@@ -80,6 +80,28 @@ impl TableContext {
             ffi::lua_setmetatable(self.state.L, self.root);
         }
     }
+
+    /*
+
+    write() -> i32
+
+    let i = V::write(self);
+    set(L, i)
+
+    pub fn as_table(&self) -> StackValue<Table> {
+        StackValue {
+            idx: self.root
+        }
+    }*/
+
+    //TODO:
+    pub fn as_table<'a>(&'a self) -> Table<'a> {
+        unsafe { ffi::lua_pushvalue(self.state.L, self.root); }
+
+        Table {
+            ptr: Ref::read(&self.state, -1).unwrap()
+        }
+    }
 }
 
 
@@ -135,6 +157,24 @@ impl<F> ToLua for TableInit<F>
     }
 }
 
+impl<'a> LuaSize for Table<'a> {
+    fn size() -> i32 {
+        0
+    }
+}
+
+
+impl<'a, 'b> FromLua<'a> for Table<'a> {
+    fn read(state: &'a WeakState, idx: i32) -> Result<Self> {
+        unsafe {
+            ::arg_typeck(state, idx, ffi::LUA_TTABLE)?;
+
+            Ok(Table {
+                ptr: Ref::read(&state, -1)?
+            })
+        }
+    }
+}
 
 impl<'a, 'b> FromLuaFunctionStack<'a> for Table<'a> {
     type WithContext = TableContext;
