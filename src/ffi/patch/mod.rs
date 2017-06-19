@@ -1,5 +1,7 @@
 use libc;
 
+pub mod traceback;
+
 type MSize = u32;
 
 #[repr(C)]
@@ -54,11 +56,49 @@ struct GCtab {
 }
 
 #[repr(C)]
+struct GCfuncC {
+    nextgc: GCRef,
+    marked: u8,
+    gct: u8,
+
+    ffid: u8,
+    nupvalues: u8,
+    env: GCRef,
+    gclist: GCRef,
+    pc: MRef,
+
+    f: super::lua_CFunction,
+    upvalue: [TValue; 1]
+}
+
+#[repr(C)]
+struct GCfuncL {
+    nextgc: GCRef,
+    marked: u8,
+    gct: u8,
+
+    ffid: u8,
+    nupvalues: u8,
+    env: GCRef,
+    gclist: GCRef,
+    pc: MRef,
+
+    uvptr: [GCRef; 1]
+}
+
+#[repr(C)]
+union GCfunc {
+    c: GCfuncC,
+    l: GCfuncL
+}
+
+#[repr(C)]
 union GCobj {
     gch: GChead,
     str: GCstr,
     th: luajit_State,
     tab: GCtab,
+    func: GCfunc,
 }
 
 #[repr(C)]
@@ -163,20 +203,36 @@ struct _global_State {
     // TODO: ...
 }
 
-const LJ_TNIL: libc::c_uint = !0;
-const LJ_TFALSE: libc::c_uint = !1;
-const LJ_TTRUE: libc::c_uint = !2;
-const LJ_TLIGHTUD: libc::c_uint = !3;
-const LJ_TSTR: libc::c_uint = !4;
-const LJ_TUPVAL: libc::c_uint = !5;
-const LJ_TTHREAD: libc::c_uint = !6;
-const LJ_TPROTO: libc::c_uint = !7;
-const LJ_TFUNC: libc::c_uint = !8;
-const LJ_TTRACE: libc::c_uint = !9;
-const LJ_TCDATA: libc::c_uint = !10;
-const LJ_TTAB: libc::c_uint = !11;
-const LJ_TUDATA: libc::c_uint = !12;
-const LJ_TNUMX: libc::c_uint = !13;
+
+const FF_LUA: libc::c_int = 0;
+const FF_C: libc::c_int = 1;
+
+#[inline(always)]
+unsafe extern "C" fn isluafunc(func: *mut GCfunc) -> bool {
+    (*func).c.ffid == FF_LUA as _
+}
+
+
+#[inline(always)]
+unsafe extern "C" fn isffunc(func: *mut GCfunc) -> bool {
+    (*func).c.ffid > FF_C as _
+}
+
+#[inline(always)]
+unsafe extern "C" fn iscfunc(func: *mut GCfunc) -> bool {
+    (*func).c.ffid == FF_C as _
+}
+
+
+#[inline(always)]
+unsafe extern "C" fn funcV(o: *mut TValue) -> *mut GCfunc {
+    &mut (*gcval(o)).func
+}
+
+#[inline(always)]
+unsafe extern "C" fn gcval(o: *mut TValue) -> *mut GCobj {
+    gcref(((*o).0)._inner._union.gcr)
+}
 
 #[inline(always)]
 unsafe extern "C" fn obj2gco<T>(v: *mut T) -> *mut GCobj {
@@ -242,6 +298,21 @@ unsafe extern "C" fn tabref(r: GCRef) -> *mut GCtab {
     &mut (*gcref(r)).tab
 }
 
+const LJ_TNIL: libc::c_uint = !0;
+const LJ_TFALSE: libc::c_uint = !1;
+const LJ_TTRUE: libc::c_uint = !2;
+const LJ_TLIGHTUD: libc::c_uint = !3;
+const LJ_TSTR: libc::c_uint = !4;
+const LJ_TUPVAL: libc::c_uint = !5;
+const LJ_TTHREAD: libc::c_uint = !6;
+const LJ_TPROTO: libc::c_uint = !7;
+const LJ_TFUNC: libc::c_uint = !8;
+const LJ_TTRACE: libc::c_uint = !9;
+const LJ_TCDATA: libc::c_uint = !10;
+const LJ_TTAB: libc::c_uint = !11;
+const LJ_TUDATA: libc::c_uint = !12;
+const LJ_TNUMX: libc::c_uint = !13;
+
 extern "C" {
     fn lj_str_new(L: *mut luajit_State, str: *const libc::c_char, len: libc::size_t) -> *mut GCstr;
     fn lj_meta_tset(L: *mut luajit_State, str: *mut TValue, len: *mut TValue) -> *mut TValue;
@@ -253,9 +324,11 @@ extern "C" {
 #[inline(never)]
 pub unsafe extern "C" fn flu_setlfield(L: *mut super::lua_State, idx: libc::c_int, k: *const libc::c_char, len: libc::size_t) {
     let L: *mut luajit_State = L as _;
+
     let mut o: *mut TValue = ::std::mem::uninitialized();
     let mut key: TValue = ::std::mem::uninitialized();
     let t = index2adr(L, idx);
+
     setstrV(L, &mut key, lj_str_new(L, k, len));
     o = lj_meta_tset(L, t, &mut key);
     if !o.is_null() {

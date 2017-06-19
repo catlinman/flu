@@ -1,20 +1,11 @@
 use ::{
-    ffi, 
-    nil, 
-    typename,
+    ffi, nil, typename,
 
-    FunctionStack,
-    Ref, 
-    State, 
-    UncheckedFunctionStack, 
-    WeakState
+    FunctionStack, Ref, State, UncheckedFunctionStack, WeakState
 };
-
 use errors::*;
 use transfer::{
-    FromLua,
-    LuaSize,
-    ToLua
+    FromLua, LuaSize, ToLua
 };
 
 use libc;
@@ -31,6 +22,7 @@ pub struct Function<'a> {
     ptr: Ref<'a>,
 }
 
+
 impl<'a, 'b> Function<'a> {
     pub fn call<A, R>(&self, state: &'b State, args: A) -> Result<R>
     where
@@ -41,7 +33,7 @@ impl<'a, 'b> Function<'a> {
         args.write(state);
 
         unsafe {
-            let ret = ffi::lua_pcall(state.L, A::size(), R::size(), 0);
+            let ret = ffi::lua_pcall(state.L, A::size(), R::size(), -A::size()-1);
 
             match ret {
                 0 => Ok(R::read(state, -1)?),
@@ -142,7 +134,7 @@ mod bench {
         let mut state = State::new();
         state.set("test", test);
 
-        b.iter(|| state.eval(r#"
+        b.iter(|| state.eval::<()>(r#"
 for i=1,256 do
     test(1, 2, "hello")
 end
@@ -167,7 +159,7 @@ end
         let mut state = State::new();
         state.set("test", test as LuaUncheckedFn);
 
-        b.iter(|| state.eval(r#"
+        b.iter(|| state.eval::<()>(r#"
 for i=1,256 do
     test(1, 2, "hello")
 end

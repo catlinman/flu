@@ -1,16 +1,18 @@
 use ::{
-    ffi, State, WeakState
+    ffi, State, WeakState, Ref
 };
 use errors::*;
-use transfer::{FromLua, ToLua, LuaSize};
+use transfer::{FromLuaFunctionStack, FromLua, ToLua, LuaSize};
 
 use std::ffi::CString;
 use std::mem;
 use std::slice;
 
-pub struct Table<'a> {
-    state: &'a State,
+pub trait IsTable {}
 
+
+pub struct Table<'a> {
+    ptr: Ref<'a>
 }
 
 pub struct TableContext {
@@ -68,12 +70,25 @@ impl TableContext {
             );*/
         }
     }
+
+    pub fn set_meta<T>(&self, table: T)
+        where T: ToLua + IsTable
+    {
+        table.write(&self.state);
+
+        unsafe {
+            ffi::lua_setmetatable(self.state.L, self.root);
+        }
+    }
 }
 
 
 pub struct TableInit<F: Fn(TableContext)> {
     func: F
 }
+
+impl<'a> IsTable for Table<'a> {}
+impl<F: Fn(TableContext)> IsTable for TableInit<F> {}
 
 impl<'a> Table<'a> {
     pub fn new<F>(func: F) -> TableInit<F>
@@ -83,7 +98,31 @@ impl<'a> Table<'a> {
             func: func
         }
     }
+
+    pub fn reference<F>(state: &'a State, func: F) -> Self
+        where F: Fn(TableContext)
+    {
+        Self::new(func).write(&state);
+
+        Table {
+            ptr: Ref::read(&state.state, -1).unwrap()
+        }
+    }
 }
+
+impl<'a> ToLua for Table<'a> {
+    fn write(&self, state: &WeakState) {
+        self.ptr.write(&state);
+    }
+}
+
+impl<'a, 'b> ToLua for &'b Table<'a> {
+    fn write(&self, state: &WeakState) {
+        self.ptr.write(&state);
+    }
+}
+impl<'a, 'b> IsTable for &'b Table<'a> {}
+
 
 impl<F> ToLua for TableInit<F>
         where F: Fn(TableContext) {
@@ -91,31 +130,45 @@ impl<F> ToLua for TableInit<F>
         unsafe {
             ffi::lua_newtable(state.L);
 
-            (self.func)(TableContext { state: WeakState::from_state(state.L), root: ffi::lua_gettop(state.L) });
+            (self.func)(TableContext { state: WeakState::from_state(state.L), root: ::abs_idx(state.L, -1) });
         }
     }
 }
 
 
-mod bench {
-    use super::*;
-    use test::Bencher;
+impl<'a, 'b> FromLuaFunctionStack<'a> for Table<'a> {
+    type WithContext = TableContext;
 
-    #[bench]
-    fn table_get_set(b: &mut Bencher) {
-        let mut state = State::new();
+    fn read_unchecked_arg(state: &'a WeakState, idx: i32) -> Self {
+        unsafe {
+            ::arg_unchecked_typeck(state, idx, ffi::LUA_TTABLE);
 
-        b.iter(|| {
-            state.set("one", Table::new(|root| {
-                root.set("foobartwobar", 4);
-                root.set("two", Table::new(|cxt| {
-                    cxt.set("three", Table::new(|cxt| {
-                        cxt.set("four", Table::new(|cxt| {
-                            cxt.set("onebar", root.get::<i32>("foobartwobar").unwrap());
-                        }));
-                    }));
-                }));
-            }));
-        });
+            Table {
+                ptr: Ref::read(&state, -1).unwrap()
+            }
+        }
+    }
+
+    fn read_arg(state: &'a WeakState, idx: i32) -> Result<Self> {
+        unsafe {
+            ::arg_typeck(state, idx, ffi::LUA_TTABLE)?;
+
+            Ok(Table {
+                ptr: Ref::read(&state, -1)?
+            })
+        }
+    }
+
+    fn with_arg<F, T>(state: &'a WeakState, idx: i32, func: F) -> Result<T>
+        where F: Fn(Self::WithContext) -> Result<T>
+    {
+        unsafe {
+            ::arg_typeck(state, idx, ffi::LUA_TTABLE)?;
+
+            (func)(TableContext {
+                state: WeakState::from_state(state.L),
+                root: ::abs_idx(state.L, idx)
+            })
+        }
     }
 }

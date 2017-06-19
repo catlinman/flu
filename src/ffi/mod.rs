@@ -48,6 +48,7 @@ pub struct lua_State;
 pub struct ZIO;
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct lua_Debug {
     pub event: c_int,
     pub name: *const c_char,
@@ -58,7 +59,7 @@ pub struct lua_Debug {
     pub nups: c_int,
     pub linedefined: c_int,
     pub lastlinedefined: c_int,
-    pub short_src: [c_char; 60],
+    pub short_src: [[c_char; 30]; 2],
     pub i_ci: c_int,
 }
 
@@ -217,6 +218,7 @@ extern "C" {
     pub fn luaL_ref(L: *mut lua_State, t: c_int) -> c_int;
     pub fn luaL_unref(L: *mut lua_State, t: c_int, tref: c_int);
 
+    pub fn luaL_traceback(L: *mut lua_State, L1: *mut lua_State, msg: *const c_char, level: c_int);
     pub fn luaL_error(L: *mut lua_State, fmt: *const c_char, ...) -> c_int;
     pub fn luaL_argerror(L: *mut lua_State, narg: c_int, extramsg: *const c_char) -> c_int;
     pub fn luaL_typerror(L: *mut lua_State, narg: c_int, tname: *const c_char) -> c_int;

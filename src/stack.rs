@@ -108,4 +108,10 @@ impl FunctionStack {
     {
         val.write(&self.state);
     }
+
+    pub fn with_arg<'b, A, T, F>(&'b self, idx: i32, func: F) -> Result<T>
+        where A: FromLuaFunctionStack<'b>, F: Fn(A::WithContext) -> Result<T>
+    {
+        A::with_arg::<F, T>(&self.state, idx, func)
+    }
 }

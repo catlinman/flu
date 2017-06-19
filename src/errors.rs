@@ -6,11 +6,11 @@ error_chain! {
     errors {
         RuntimeError(t: String) {
             description("Lua runtime error")
-            display("Lua runtime error: '{}'", t)
+            display("Lua runtime error: {}", t)
         }
         SyntaxError(t: String) {
             description("Lua syntax error")
-            display("Lua syntax error: '{}'", t)
+            display("Lua syntax error: {}", t)
         }
         TypeError(t: String, g: String) {
             description("invalid type")

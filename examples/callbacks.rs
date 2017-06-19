@@ -20,51 +20,58 @@ fn example() -> Result<()> {
 
         Ok(1)
     }
-
-    state.set("test", 5);
-
+/*
     state.set("lib", flu::Table::new(|cxt| {
         cxt.set("add", add);
         cxt.set("test2", state.get::<f64>("test").unwrap());
-    }));
-
-    /*state.set("testtable", flu::Table::new(|cxt| {
-        cxt.set("a", 3);
-        cxt.set("emptysubtable", flu::Table::new(|cxt| {}));
-        cxt.set("subtable", flu::Table::new(|cxt| {
-            cxt.set("foo", "bar");
-            cxt.set("bar", 45.23);
-            cxt.set("noot", cxt.get::<String>("foo").unwrap());
-            cxt.set("test", 3.14);
-        }));
     }));*/
 
+
+    /*state.with("test", |cxt| {
+        cxt.set_meta()
+    });*/
+
+    let m = flu::Table::reference(&state, |cxt| {
+        fn __add(stack: flu::FunctionStack) -> Result<i32> {
+            let a = stack.with_arg::<flu::Table, _, _>(1, |cxt| {
+                cxt.get::<f64>("a")
+            })?;
+
+            let b = stack.with_arg::<flu::Table, _, _>(2, |cxt| {
+                cxt.get::<f64>("a")
+            })?;
+
+            stack.push(a + b);
+
+            Ok(1)
+        }
+
+        cxt.set("__add", __add);
+    });
+
+    let b = 4;
+    state.set("test", flu::Table::new(|cxt| {
+        cxt.set("b", b);
+        cxt.set_meta(&m);
+    }));
+
     state.eval(r#"
-function tprint (tbl, indent)
-  if not indent then indent = 0 end
-  for k, v in pairs(tbl) do
-    formatting = string.rep("  ", indent) .. k .. ": "
-    if type(v) == "table" then
-      print(formatting)
-      tprint(v, indent+1)
-    else
-      print(formatting .. v)
-    end
-  end
+test = test + test
+print(test) -- prints 8
+
+function add(a, b)
+    local q = 5
+    table.insert(q, b)
+    return a + b
 end
 
-print(lib.add(5))
-print(lib.add(5, 10))
-print(lib.add(5, 10, 100, 200))
+function addtwo(a, b)
+    local m = function(r) end
+    return add(a, b) + add(a, b)
+end
 
---tprint(testtable)
+--local u = addtwo(3, "oops")
     "#)?;
-
-    //state.set("test2", test2);
-    //state.set("test", test as flu::LuaUncheckedFn);
-
-    //state.eval("test2(1, 2, \"hello\")")?;
-    //state.eval("test(1, 2, \"hello\")")?;
 
     Ok(())
 }

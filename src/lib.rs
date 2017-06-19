@@ -2,6 +2,8 @@
 #![feature(repr_align)]
 #![feature(untagged_unions)]
 #![feature(test)]
+#![feature(offset_to)]
+#![feature(associated_type_defaults)]
 #![recursion_limit = "1024"]
 
 
@@ -44,12 +46,13 @@ pub fn pcall_errck<'a>(state: &'a WeakState, ret: libc::c_int) -> Result<()> {
                     .chain_err(|| "unable to read error message from stack")?,
             ).into(),
         ),
-        ffi::LUA_ERRRUN => Err(
+        ffi::LUA_ERRRUN => {
+            Err(
             ErrorKind::RuntimeError(
                 <String as transfer::FromLua<'a>>::read(&state, -1)
                     .chain_err(|| "unable to read error message from stack")?,
             ).into(),
-        ),
+        )},
         ffi::LUA_ERRMEM => Err(ErrorKind::MemoryError.into()),
         ffi::LUA_ERRERR => Err(ErrorKind::ErrorHandler.into()),
         _ => unreachable!(),
@@ -92,6 +95,15 @@ fn typename(state: &WeakState, idx: i32) -> String {
     }
 }
 
+fn abs_idx(L: *mut ffi::lua_State, idx: i32) -> i32 {
+    if idx > 0 || idx <= ffi::LUA_REGISTRYINDEX {
+        idx
+    } else {
+        unsafe {
+            ffi::lua_gettop(L) + idx + 1
+        }
+    }
+}
 
 pub mod ffi;
 pub mod errors;

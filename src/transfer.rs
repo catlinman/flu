@@ -10,19 +10,20 @@ use Ref;
 use ffi;
 use typename;
 
-pub trait Value<'a>: Sized {
-    fn read(state: &'a WeakState, idx: i32) -> Result<Self>;
-    fn write(&self, state: &'a WeakState);
-    fn size() -> i32;
-}
-
 pub trait FromLua<'a>: Sized {
     fn read(state: &'a WeakState, idx: i32) -> Result<Self>;
 }
 
 pub trait FromLuaFunctionStack<'a>: Sized {
+    type WithContext = ();
+
     fn read_unchecked_arg(state: &'a WeakState, idx: i32) -> Self;
     fn read_arg(state: &'a WeakState, idx: i32) -> Result<Self>;
+    fn with_arg<F, T>(state: &'a WeakState, idx: i32, func: F) -> Result<T>
+        where F: Fn(Self::WithContext) -> Result<T>
+    {
+        unimplemented!()
+    }
 }
 
 pub trait ToLua: Sized {
@@ -38,6 +39,12 @@ pub trait LuaSize {
 impl<'a> FromLua<'a> for () {
     fn read(state: &'a WeakState, idx: i32) -> Result<Self> {
         Ok(())
+    }
+}
+
+impl LuaSize for () {
+    fn size() -> i32 {
+        0
     }
 }
 
@@ -61,6 +68,8 @@ impl<'a> FromLua<'a> for String {
 }
 
 impl<'a> FromLuaFunctionStack<'a> for String {
+    //type WithContext;
+
     fn read_unchecked_arg(state: &'a WeakState, idx: i32) -> Self {
         unsafe {
             ::arg_unchecked_typeck(state, idx, ffi::LUA_TSTRING);

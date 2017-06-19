@@ -71,6 +71,16 @@ impl State {
     }
 }
 
+
+extern "C" fn errhandler(stack: ::UncheckedFunctionStack) -> i32 {
+    unsafe {
+        ffi::patch::traceback::flu_traceback(stack.state.L);
+        //ffi::luaL_traceback(stack.state.L, stack.state.L, ffi::lua_tostring(stack.state.L, -1), 0);
+    }
+
+    1
+}
+
 impl WeakState {
     pub fn new() -> Self {
         let L = unsafe { ffi::luaL_newstate() };
@@ -84,19 +94,25 @@ impl WeakState {
         WeakState { L: state }
     }
 
-    pub fn eval(&self, code: &str) -> Result<()>
-    //where S: Into<String>
+    pub fn eval<'a, T>(&'a self, code: &str) -> Result<T>
+    where T: FromLua<'a> + LuaSize
     {
         unsafe {
             //pub fn luaL_loadbuffer(L: *mut lua_State, buf: *const c_char, size: size_t, name: *const c_char) -> c_int;
 
+            (errhandler as ::LuaUncheckedFn).write(self);
+
             let ret = ffi::luaL_loadbuffer(self.L, code.as_ptr() as _, code.len(), c_str!("<eval>"));
             ::pcall_errck(self, ret)?;
 
-            let ret = ffi::lua_pcall(self.L, 0, ffi::LUA_MULTRET, 0);
+            let ret = ffi::lua_pcall(self.L, 0, T::size(), -2);
             ::pcall_errck(self, ret)?;
 
-            Ok(())
+            let r = T::read(self, -1);
+
+            ffi::lua_pop(self.L, T::size());
+
+            r
         }
     }
 
