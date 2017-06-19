@@ -1,69 +1,60 @@
-use Context;
-use LuaRef;
-use Function;
-use Table;
-use ffi;
-use nil;
+use ::{
+    ffi, State, WeakState, Ref
+};
+use errors::*;
+use transfer::{FromLuaFunctionStack, FromLua, ToLua, LuaSize};
 
-use libc;
+use std::ffi::CString;
+use std::mem;
+use std::slice;
 
-use stack::Read;
-use stack::Size;
-
-#[derive(Debug, PartialEq)]
-pub enum LuaValue<'a> {
-    Number(f64),
-    String(&'a str),
-    Bool(bool),
-    Table(Table<'a>),
-    Function(Function<'a>),
-    LightUserdata(*mut libc::c_void),
-    /*Thread,*/
-    Nil,
-    None,
+pub enum Value<'a> {
+    Table(::Table<'a>)
 }
 
-impl<'a> Read<'a> for LuaValue<'a> {
-    type Output = LuaValue<'a>;
 
-    fn read(cxt: &'a mut Context, idx: i32) -> Self {
+pub struct ValueContext {
+    pub state: WeakState,
+    root: i32
+}
+
+impl ValueContext {
+    pub fn set_meta<T>(&self, table: T)
+        where T: ToLua + ::IsTable
+    {
+        table.write(&self.state);
+
         unsafe {
-            let handle = cxt.handle;
-            match ffi::lua_type(handle, idx) {
-                ffi::LUA_TNONE => LuaValue::None,
-                ffi::LUA_TNIL => LuaValue::Nil,
-                ffi::LUA_TBOOLEAN => LuaValue::Bool(bool::read(cxt, idx)),
-                ffi::LUA_TLIGHTUSERDATA => LuaValue::LightUserdata(ffi::lua_touserdata(cxt.handle, idx)),
-                ffi::LUA_TNUMBER => LuaValue::Number(f64::read(cxt, idx)),
-                ffi::LUA_TSTRING => LuaValue::String(<&str>::read(cxt, idx)),
-                ffi::LUA_TTABLE => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),
-                ffi::LUA_TFUNCTION => LuaValue::Function(Function::read(cxt, idx)),
-                ffi::LUA_TUSERDATA => unimplemented!(),
-                ffi::LUA_TTHREAD => unimplemented!(),
-                _ => panic!("yahallo"),
-            }
+            ffi::lua_setmetatable(self.state.L, self.root);
+        }
+    }
+}
+
+impl<'a, 'b> FromLuaFunctionStack<'a> for Value<'a> {
+    type WithContext = ValueContext;
+
+    fn read_unchecked_arg(state: &'a WeakState, idx: i32) -> Self {
+        unsafe {
+            unimplemented!()
+
         }
     }
 
-    fn check(cxt: &'a Context, idx: i32) -> bool {
-        true
+    fn read_arg(state: &'a WeakState, idx: i32) -> Result<Self> {
+        unsafe {
+            unimplemented!()
+
+        }
     }
-}
 
-impl<'a> Size for LuaValue<'a> {
-    fn size() -> i32 {
-        1
+    fn with_arg<F, T>(state: &'a WeakState, idx: i32, func: F) -> Result<T>
+        where F: Fn(Self::WithContext) -> Result<T>
+    {
+        unsafe {
+            unimplemented!()
+        }
     }
+
+    #[inline(always)]
+    fn valid(state: &'a WeakState, idx: i32) -> bool { true }
 }
-
-#[test]
-fn read_value() {
-    let mut cxt = Context::new();
-
-    cxt.push((nil, 45f32, "Hello world!"));
-
-    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Nil);
-    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Number(45f64));
-    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::String("Hello world!"));
-}
-

@@ -211,4 +211,6 @@ impl<'a, 'b> FromLuaFunctionStack<'a> for Table<'a> {
             })
         }
     }
+
+    fn valid(state: &'a WeakState, idx: i32) -> bool { ::arg_typeck(state, idx, ffi::LUA_TTABLE).is_ok() }
 }

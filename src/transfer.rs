@@ -24,6 +24,7 @@ pub trait FromLuaFunctionStack<'a>: Sized {
     {
         unimplemented!()
     }
+    fn valid(state: &'a WeakState, idx: i32) -> bool { false }
 }
 
 pub trait ToLua: Sized {
@@ -95,6 +96,8 @@ impl<'a> FromLuaFunctionStack<'a> for String {
             Ok(String::from_utf8_unchecked(slice.to_vec()))
         }
     }
+
+    fn valid(state: &'a WeakState, idx: i32) -> bool { ::arg_typeck(state, idx, ffi::LUA_TSTRING).is_ok() }
 }
 
 

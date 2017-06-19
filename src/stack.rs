@@ -14,6 +14,24 @@ pub struct FunctionStack {
     pub state: WeakState,
 }
 
+pub struct StackValue<'a, T: 'a> {
+    idx: i32,
+    _phantom: ::std::marker::PhantomData<&'a T>
+}
+
+impl<'a, T> ToLua for StackValue<'a, T>
+    where T: FromLuaFunctionStack<'a>
+{
+    #[inline(always)]
+    fn write(&self, state: &WeakState) {
+        unsafe {
+            //if ffi::lua_gettop(state.L) != self.idx {
+                ffi::lua_pushvalue(state.L, self.idx);
+            //}
+        }
+    }
+}
+
 impl UncheckedFunctionStack {
     pub fn check_size(&self, range: ::std::ops::Range<i32>) {
         unsafe {
@@ -117,6 +135,24 @@ impl FunctionStack {
             T: ToLua,
     {
         val.write(&self.state);
+    }
+
+    #[inline(always)]
+    pub fn value<'b, T>(&'b self, idx: i32) -> Result<StackValue<T>>
+    where T: FromLuaFunctionStack<'b>
+    {
+        let idx = ::abs_idx(self.state.L, idx);
+
+        if T::valid(&self.state, idx) {
+            Ok(StackValue {
+                idx: idx,
+                _phantom: ::std::marker::PhantomData
+            })
+        } else {
+            Err(
+                ErrorKind::TypeError("todo".into(), ::typename(&self.state, idx)).into(),
+            )
+        }
     }
 
     pub fn with_arg<'b, A, T, F>(&'b self, idx: i32, func: F) -> Result<T>

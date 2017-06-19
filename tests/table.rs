@@ -48,8 +48,9 @@ fn metatable_class() {
                 let arg = stack.arg::<String>(2).unwrap_or(String::from("no bunny :-("));
 
                 stack.push(Table::new(|cxt| {
-                    cxt.set("bunny", arg.clone());
-                    cxt.set_meta(stack.get::<Table>("Class").unwrap());
+                    let val = stack.value::<String>(2).unwrap();
+                    cxt.set("bunny", val);
+                    cxt.set_meta(stack.get::<Table>("Bunny").unwrap());
 
                     /* FIXME: broken
                     stack.with::<Table, _, _>("Class", |meta| {

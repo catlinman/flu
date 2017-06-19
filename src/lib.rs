@@ -95,6 +95,7 @@ fn typename(state: &WeakState, idx: i32) -> String {
     }
 }
 
+#[inline(always)]
 fn abs_idx(L: *mut ffi::lua_State, idx: i32) -> i32 {
     if idx > 0 || idx <= ffi::LUA_REGISTRYINDEX {
         idx
@@ -113,6 +114,7 @@ mod transfer;
 mod function;
 mod stack;
 mod table;
+mod value;
 
 pub use errors::*;
 pub use state::*;
@@ -120,6 +122,7 @@ pub use transfer::*;
 pub use table::*;
 pub use function::*;
 pub use stack::*;
+pub use value::*;
 
 pub struct nil;
 

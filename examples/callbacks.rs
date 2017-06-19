@@ -1,5 +1,6 @@
 extern crate flu;
 
+use flu::Value;
 use flu::ffi;
 use flu::Function;
 use flu::ToLua;
@@ -31,7 +32,7 @@ fn example() -> Result<()> {
         cxt.set_meta()
     });*/
 
-    let m = flu::Table::reference(&state, |cxt| {
+    /*let m = flu::Table::reference(&state, |cxt| {
         fn __add(stack: flu::FunctionStack) -> Result<i32> {
             let a = stack.with_arg::<flu::Table, _, _>(1, |cxt| {
                 cxt.get::<f64>("a")
@@ -46,16 +47,33 @@ fn example() -> Result<()> {
             Ok(1)
         }
 
+        cxt.set("__index", cxt.as_table());
         cxt.set("__add", __add);
-    });
+    });*/
 
     let b = 4;
-    state.set("test", flu::Table::new(|cxt| {
+    /*state.set("test", flu::Table::new(|cxt| {
         cxt.set("b", b);
         cxt.set_meta(&m);
-    }));
+    }));*/
+
+    fn foo(stack: flu::FunctionStack) -> Result<i32> {
+        stack.push(flu::Table::new(|cxt| {
+            cxt.set("first", stack.value::<Value>(1).unwrap());
+            cxt.set("second", stack.value::<Value>(2).unwrap());
+            cxt.set("third", stack.value::<Value>(3).unwrap());
+        }));
+
+        Ok(1)
+    }
+
+    state.set("foo", foo);
 
     state.eval(r#"
+    t = foo(14, 5, 6)
+    print(t.first)
+    print(t.second)
+    print(t.third)
 test = test + test
 print(test) -- prints 8
 
