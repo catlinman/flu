@@ -41,7 +41,7 @@ fn metatable() {
 #[test]
 fn metatable_class() {
     testbed::run(|state| {
-        state.set("Class", Table::new(|meta_cxt| {
+        state.set("Bunny", Table::new(|meta_cxt| {
             fn new(stack: FunctionStack) -> Result<i32> {
                 stack.state.dump();
 
@@ -79,9 +79,8 @@ fn metatable_class() {
             meta_cxt.set("get_bun", bunny);
         }));
 
-
         assert_eq!(state.eval::<String>(
-            "local b = Class:new('abc') return b:get_bun()"
+            "local b = Bunny:new('abc') return b:get_bun()"
         )?, "abc");
 
         Ok(())
