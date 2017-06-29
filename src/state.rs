@@ -6,7 +6,7 @@ use std::ffi::CString;
 use std::mem;
 use std::slice;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Ref<'a> {
     pub state: &'a WeakState,
     pub key: i32,
@@ -18,7 +18,7 @@ impl<'a> Drop for Ref<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(C)]
 pub struct WeakState {
     pub L: *mut ffi::lua_State,

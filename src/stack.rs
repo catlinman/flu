@@ -15,8 +15,8 @@ pub struct FunctionStack {
 }
 
 pub struct StackValue<'a, T: 'a> {
-    idx: i32,
-    _phantom: ::std::marker::PhantomData<&'a T>
+    pub idx: i32,
+    pub _phantom: ::std::marker::PhantomData<&'a T>
 }
 
 impl<'a, T> ToLua for StackValue<'a, T>
@@ -135,6 +135,19 @@ impl FunctionStack {
             T: ToLua,
     {
         val.write(&self.state);
+    }
+
+    pub fn push_global<T>(&self, idx: &str) -> Result<StackValue<T>> {
+        unsafe {
+            ffi::patch::flu_getlfield(
+                self.state.L,
+                ffi::LUA_GLOBALSINDEX,
+                idx.as_ptr() as _,
+                idx.len()
+            );
+        }
+
+        Ok(StackValue { idx: ::abs_idx(self.state.L, -1), _phantom: ::std::marker::PhantomData })
     }
 
     #[inline(always)]

@@ -158,6 +158,45 @@ impl<'a> ToLua for &'a str {
     }
 }
 
+impl<'a> FromLua<'a> for bool {
+    fn read(state: &'a WeakState, idx: i32) -> Result<Self> {
+        unsafe {
+            if ffi::lua_isboolean(state.L, idx as _) {
+
+                Ok(ffi::lua_toboolean(state.L, idx as _) != 0)
+            } else {
+                Err(ErrorKind::TypeError("number".into(), typename(state, idx)).into())
+            }
+        }
+    }
+}
+
+impl<'a> FromLuaFunctionStack<'a> for bool {
+    fn read_unchecked_arg(state: &'a WeakState, idx: i32) -> Self {
+        ::arg_unchecked_typeck(state, idx, ffi::LUA_TBOOLEAN);
+
+        unsafe { ffi::lua_toboolean(state.L, idx as _) != 0 }
+    }
+
+    fn read_arg(state: &'a WeakState, idx: i32) -> Result<Self> {
+        ::arg_typeck(state, idx, ffi::LUA_TBOOLEAN)?;
+
+        unsafe { Ok(ffi::lua_toboolean(state.L, idx as _) != 0) }
+    }
+}
+
+impl ToLua for bool {
+    fn write(&self, state: &WeakState) {
+        unsafe { ffi::lua_pushboolean(state.L, *self as _) }
+    }
+}
+
+impl LuaSize for bool {
+    fn size() -> i32 {
+        1
+    }
+}
+
 macro_rules! integer_push {
     ($ty:ident) => (
         impl<'a> FromLua<'a> for $ty {

@@ -2,6 +2,25 @@ mod testbed;
 use testbed::*;
 
 #[test]
+fn nested() {
+    testbed::run(|state| {
+        state.set("l1", Table::new(|cxt| {
+            cxt.set("l2", Table::new(|cxt| {
+                cxt.set("l3", Table::new(|cxt| {
+                    cxt.set("l4", Table::new(|cxt| {
+                        cxt.set("secret", 0xdeadbeef);
+                    }))
+                }))
+            }))
+        }));
+
+        assert_eq!(state.eval::<i32>("return l1.l2.l3.l4.secret")?, 0xdeadbeef);
+
+        Ok(())
+    })
+}
+
+#[test]
 fn metatable() {
     testbed::run(|state| {
         let m = Table::reference(&state, |cxt| {
@@ -43,24 +62,22 @@ fn metatable_class() {
     testbed::run(|state| {
         state.set("Bunny", Table::new(|meta_cxt| {
             fn new(stack: FunctionStack) -> Result<i32> {
-                stack.state.dump();
-
-                let arg = stack.arg::<String>(2).unwrap_or(String::from("no bunny :-("));
-
                 stack.push(Table::new(|cxt| {
                     let val = stack.value::<String>(2).unwrap();
                     cxt.set("bunny", val);
                     cxt.set_meta(stack.get::<Table>("Bunny").unwrap());
 
-                    /* FIXME: broken
-                    stack.with::<Table, _, _>("Class", |meta| {
+                    /* FIXME: broken, Table doesn't get popped at end of with(..),
+                              same for all Ref?
+                    stack.with::<Table, _, _>("Bunny", |meta| {
 
+                        stack.state.dump();
                         cxt.set_meta(meta.as_table());
 
                         Ok(())
                     }).unwrap();*/
-                }));
 
+                }));
 
                 Ok(1)
             }

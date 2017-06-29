@@ -17,7 +17,7 @@ use std::ptr;
 pub type LuaUncheckedFn = extern "C" fn(UncheckedFunctionStack) -> i32;
 pub type LuaFn = Fn(FunctionStack) -> Result<i32>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Function<'a> {
     ptr: Ref<'a>,
 }
@@ -62,6 +62,24 @@ impl<'a> FromLua<'a> for Function<'a> {
                 )
             }
         }
+    }
+}
+
+impl<'a> ::FromLuaFunctionStack<'a> for Function<'a> {
+    fn read_unchecked_arg(state: &'a WeakState, idx: i32) -> Self {
+        ::arg_unchecked_typeck(state, idx, ffi::LUA_TFUNCTION);
+
+        let func = Function { ptr: Ref::read(state, idx).unwrap() };
+
+        func
+    }
+
+    fn read_arg(state: &'a WeakState, idx: i32) -> Result<Self> {
+        ::arg_typeck(state, idx, ffi::LUA_TFUNCTION)?;
+
+        let func = Function { ptr: Ref::read(state, idx)? };
+
+        Ok(func)
     }
 }
 

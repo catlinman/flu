@@ -10,11 +10,12 @@ use std::slice;
 
 pub trait IsTable {}
 
-
+#[derive(Debug, PartialEq)]
 pub struct Table<'a> {
     ptr: Ref<'a>
 }
 
+#[derive(Debug)]
 pub struct TableContext {
     pub state: WeakState,
     root: i32
@@ -95,11 +96,10 @@ impl TableContext {
     }*/
 
     //TODO:
-    pub fn as_table<'a>(&'a self) -> Table<'a> {
-        unsafe { ffi::lua_pushvalue(self.state.L, self.root); }
-
-        Table {
-            ptr: Ref::read(&self.state, -1).unwrap()
+    pub fn as_table<'a>(&'a self) -> ::StackValue<Table<'a>> {
+        ::StackValue {
+            idx: self.root,
+            _phantom: ::std::marker::PhantomData
         }
     }
 }
@@ -144,6 +144,7 @@ impl<'a, 'b> ToLua for &'b Table<'a> {
     }
 }
 impl<'a, 'b> IsTable for &'b Table<'a> {}
+impl<'a> IsTable for ::StackValue<'a, Table<'a>> {}
 
 
 impl<F> ToLua for TableInit<F>
@@ -176,7 +177,7 @@ impl<'a, 'b> FromLua<'a> for Table<'a> {
     }
 }
 
-impl<'a, 'b> FromLuaFunctionStack<'a> for Table<'a> {
+impl<'a> FromLuaFunctionStack<'a> for Table<'a> {
     type WithContext = TableContext;
 
     fn read_unchecked_arg(state: &'a WeakState, idx: i32) -> Self {

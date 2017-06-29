@@ -10,17 +10,6 @@ use flu::errors::*;
 fn example() -> Result<()> {
     let mut state = flu::State::new();
 
-    fn add(stack: flu::FunctionStack) -> Result<i32> {
-        let sz = stack.check_size(1..10)?;
-
-        let mut sum = 0f64;
-        for i in 1..(sz + 1) {
-            sum += stack.arg::<f64>(i)?;
-        }
-        stack.push(sum);
-
-        Ok(1)
-    }
 /*
     state.set("lib", flu::Table::new(|cxt| {
         cxt.set("add", add);
@@ -74,58 +63,9 @@ fn example() -> Result<()> {
     print(t.first)
     print(t.second)
     print(t.third)
-test = test + test
-print(test) -- prints 8
-
-function add(a, b)
-    local q = 5
-    table.insert(q, b)
-    return a + b
-end
-
-function addtwo(a, b)
-    local m = function(r) end
-    return add(a, b) + add(a, b)
-end
-
---local u = addtwo(3, "oops")
-    "#)?;
+"#)?;
 
     Ok(())
-}
-
-struct DropTest;
-impl Drop for DropTest {
-    fn drop(&mut self) {
-        println!("{}", "drop!!");
-    }
-}
-
-extern "C" fn test(stack: flu::UncheckedFunctionStack) -> i32 {
-    let t = DropTest;
-    let sz = stack.check_size(1..3);
-
-    let a: i32 = stack.arg(1);
-    let b: i32 = stack.arg(2);
-    let c: String = stack.arg(3);
-
-    println!("{:?}, {:?}, {:?}", a, b, c);
-
-    //let a = flu::arg::<i32>(1)?;
-    0
-}
-
-fn test2(stack: flu::FunctionStack) -> Result<i32> {
-    let t = DropTest;
-    let sz = stack.check_size(1..3)?;
-
-    let a: i32 = stack.arg(1)?;
-    let b: i32 = stack.arg(2)?;
-    let c: String = stack.arg(3)?;
-
-    println!("{:?}, {:?}, {:?}", a, b, c);
-
-    Ok(0)
 }
 
 fn main() {
