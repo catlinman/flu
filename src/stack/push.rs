@@ -7,7 +7,7 @@ use nil;
 use std::ffi::CString;
 
 pub trait Push {
-    fn push(&self, cxt: &Context);
+    fn push(&self, ctx: &Context);
 }
 
 impl Push for () {
@@ -16,17 +16,17 @@ impl Push for () {
 }
 
 impl Push for nil {
-    fn push(&self, cxt: &Context) {
+    fn push(&self, ctx: &Context) {
         unsafe {
-            ffi::lua_pushnil(cxt.handle)
+            ffi::lua_pushnil(ctx.handle)
         }
     }
 }
 
 impl Push for bool {
-    fn push(&self, cxt: &Context) {
+    fn push(&self, ctx: &Context) {
         unsafe {
-            ffi::lua_pushboolean(cxt.handle, *self as i32)
+            ffi::lua_pushboolean(ctx.handle, *self as i32)
         }
     }
 }
@@ -34,8 +34,8 @@ impl Push for bool {
 macro_rules! integer_push {
     ($ty:ident) => (
         impl Push for $ty {
-            fn push(&self, cxt: &Context) {
-                unsafe { ffi::lua_pushinteger(cxt.handle, *self as ffi::lua_Integer) }
+            fn push(&self, ctx: &Context) {
+                unsafe { ffi::lua_pushinteger(ctx.handle, *self as ffi::lua_Integer) }
             }
         }
     )
@@ -52,8 +52,8 @@ integer_push!(u32);
 macro_rules! number_push {
     ($ty:ident) => (
         impl Push for $ty {
-            fn push(&self, cxt: &Context) {
-                unsafe { ffi::lua_pushnumber(cxt.handle, *self as ffi::lua_Number) }
+            fn push(&self, ctx: &Context) {
+                unsafe { ffi::lua_pushnumber(ctx.handle, *self as ffi::lua_Number) }
             }
         }
     )
@@ -63,31 +63,31 @@ number_push!(f32);
 number_push!(f64);
 
 impl<'a> Push for &'a str {
-    fn push(&self, cxt: &Context) {
+    fn push(&self, ctx: &Context) {
         unsafe {
-            ffi::lua_pushlstring(cxt.handle, self.as_ptr() as *const i8, self.len());
+            ffi::lua_pushlstring(ctx.handle, self.as_ptr() as *const i8, self.len());
         }
     }
 }
 
 impl Push for String {
-    fn push(&self, cxt: &Context) {
+    fn push(&self, ctx: &Context) {
         let value = CString::new(&self[..]).unwrap();
         unsafe {
-            ffi::lua_pushlstring(cxt.handle, value.as_ptr(), self.len())
+            ffi::lua_pushlstring(ctx.handle, value.as_ptr(), self.len())
         };
     }
 }
 
 impl<T> Push for Option<T> where T: Push {
-    fn push(&self, cxt: &Context) {
+    fn push(&self, ctx: &Context) {
         match self {
             &Some(ref p) => {
-                p.push(cxt)
+                p.push(ctx)
             }
             &None => {
                 unsafe {
-                    ffi::lua_pushnil(cxt.handle)
+                    ffi::lua_pushnil(ctx.handle)
                 }
             }
         }
@@ -97,10 +97,10 @@ impl<T> Push for Option<T> where T: Push {
 macro_rules! tuple_push {
     ($($name:ident)+) => (
         impl<$($name: Push),*> Push for ($($name,)*) {
-            fn push(&self, cxt: &Context) {
+            fn push(&self, ctx: &Context) {
                 #![allow(non_snake_case)]
                 let &($(ref $name,)*) = self;
-                $($name.push(cxt);)*
+                $($name.push(ctx);)*
             }
         }
     );

@@ -17,60 +17,60 @@ use std::collections::HashMap;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Table<'a> {
-    pub cxt: &'a Context,
+    pub ctx: &'a Context,
     pub ptr: LuaRef<'a>,
 }
 
 impl<'a> Table<'a> {
-    pub fn new(cxt: &'a Context) -> Self {
+    pub fn new(ctx: &'a Context) -> Self {
         unsafe {
-            ffi::lua_newtable(cxt.handle);
+            ffi::lua_newtable(ctx.handle);
         }
 
-        Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
+        Table { ctx: ctx, ptr: LuaRef::read(ctx, -1) }
     }
 
-    pub fn from_map<K, V>(cxt: &'a Context, map: &HashMap<K, V>) -> Self
+    pub fn from_map<K, V>(ctx: &'a Context, map: &HashMap<K, V>) -> Self
         where K: LuaIndex + Eq + Hash,
               V: Push + Size
     {
         unsafe {
-            ffi::lua_newtable(cxt.handle);
+            ffi::lua_newtable(ctx.handle);
         }
 
         for (k, v) in map.iter() {
-            v.push(cxt);
-            k.set(cxt, cxt.size() - V::size());
+            v.push(ctx);
+            k.set(ctx, ctx.size() - V::size());
         }
 
-        Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
+        Table { ctx: ctx, ptr: LuaRef::read(ctx, -1) }
     }
 
-    pub fn from_vec<V>(cxt: &'a Context, vec: &Vec<V>) -> Self
+    pub fn from_vec<V>(ctx: &'a Context, vec: &Vec<V>) -> Self
         where V: Push + Size
     {
         unsafe {
-            ffi::lua_newtable(cxt.handle);
+            ffi::lua_newtable(ctx.handle);
         }
 
         for (k, v) in vec.iter().enumerate() {
-            v.push(cxt);
-            (k + 1).set(cxt, cxt.size() - V::size());
+            v.push(ctx);
+            (k + 1).set(ctx, ctx.size() - V::size());
         }
 
-        Table { cxt: cxt, ptr: LuaRef::read(cxt, -1) }
+        Table { ctx: ctx, ptr: LuaRef::read(ctx, -1) }
     }
 
     pub fn get<T, K>(&self, idx: K) -> T
         where T: Read<'a> + Size,
               K: LuaIndex
     {
-        self.ptr.push(self.cxt);
+        self.ptr.push(self.ctx);
 
-        idx.get(self.cxt, -1);
+        idx.get(self.ctx, -1);
 
-        let ret = self.cxt.pop::<T>();
-        self.cxt.pop_discard(1);
+        let ret = self.ctx.pop::<T>();
+        self.ctx.pop_discard(1);
         ret
     }
 
@@ -78,56 +78,56 @@ impl<'a> Table<'a> {
         where T: Push,
               K: LuaIndex
     {
-        self.ptr.push(self.cxt);
-        self.cxt.push(val);
+        self.ptr.push(self.ctx);
+        self.ctx.push(val);
 
-        idx.set(self.cxt, -2);
-        self.cxt.dump();
+        idx.set(self.ctx, -2);
+        self.ctx.dump();
 
-        self.cxt.pop_discard(1);
+        self.ctx.pop_discard(1);
     }
 
     pub fn iter<T>(&self) -> TableIterator<T>
         where T: Read<'a> + Size
     {
-        self.ptr.push(self.cxt);
+        self.ptr.push(self.ctx);
 
         unsafe {
-            ffi::lua_pushnil(self.cxt.handle);
+            ffi::lua_pushnil(self.ctx.handle);
         }
 
         // TODO: make Context immutable during iter borrow
         TableIterator {
-            cxt: self.cxt,
+            ctx: self.ctx,
             _pd: PhantomData
         }
     }
 
     pub fn len(&self) -> usize {
-        self.ptr.push(self.cxt);
+        self.ptr.push(self.ctx);
         let len = unsafe {
-            ffi::lua_objlen(self.cxt.handle, -1) as usize
+            ffi::lua_objlen(self.ctx.handle, -1) as usize
         };
-        self.cxt.pop_discard(1);
+        self.ctx.pop_discard(1);
         len
     }
 }
 
 impl<'a> Read<'a> for Table<'a> {
-    fn read(cxt: &'a Context, idx: i32) -> Self {
-        Table { cxt: cxt, ptr: LuaRef::read(cxt, idx) }
+    fn read(ctx: &'a Context, idx: i32) -> Self {
+        Table { ctx: ctx, ptr: LuaRef::read(ctx, idx) }
     }
 
-    fn check(cxt: &'a Context, idx: i32) -> bool {
+    fn check(ctx: &'a Context, idx: i32) -> bool {
         unsafe {
-            ffi::lua_istable(cxt.handle, idx)
+            ffi::lua_istable(ctx.handle, idx)
         }
     }
 }
 
 impl<'a> Push for Table<'a> {
-    fn push(&self, cxt: &Context) {
-        self.ptr.push(cxt)
+    fn push(&self, ctx: &Context) {
+        self.ptr.push(ctx)
     }
 }
 
@@ -138,7 +138,7 @@ impl<'a> Size for Table<'a> {
 }
 
 pub struct TableIterator<'a, T> {
-    cxt: &'a Context,
+    ctx: &'a Context,
     _pd: PhantomData<T>
 }
 
@@ -149,17 +149,17 @@ impl<'a, T> Iterator for TableIterator<'a, T>
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
-            match ffi::lua_next(self.cxt.handle, -2) > 0 {
+            match ffi::lua_next(self.ctx.handle, -2) > 0 {
                 true => {
-                    ffi::lua_pushvalue(self.cxt.handle, -2);
-                    let k = self.cxt.peek::<LuaValue>(-1);
-                    let v = self.cxt.peek::<T>(-2);
-                    self.cxt.pop_discard(2);
+                    ffi::lua_pushvalue(self.ctx.handle, -2);
+                    let k = self.ctx.peek::<LuaValue>(-1);
+                    let v = self.ctx.peek::<T>(-2);
+                    self.ctx.pop_discard(2);
 
                     Some((k, v))
                 }
                 false => {
-                    self.cxt.pop_discard(1);
+                    self.ctx.pop_discard(1);
                     None
                 }
             }
@@ -169,9 +169,9 @@ impl<'a, T> Iterator for TableIterator<'a, T>
 
 #[test]
 fn len() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
-    let table = Table::new(&cxt);
+    let table = Table::new(&ctx);
 
     table.set(1, 100);
     table.set(2, 200);
@@ -182,9 +182,9 @@ fn len() {
 
 #[test]
 fn access() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
-    let table = Table::new(&cxt);
+    let table = Table::new(&ctx);
 
     table.set("alongkeyinatable", nil);
     table.set(1, 5f64);
@@ -197,9 +197,9 @@ fn access() {
 
 #[test]
 fn iter() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
-    let table = Table::new(&cxt);
+    let table = Table::new(&ctx);
 
     table.set(1, 5);
     table.set(2, 15);
@@ -210,19 +210,19 @@ fn iter() {
         (LuaValue::Number(2f64), LuaValue::Number(15f64)),
         (LuaValue::String("woop"), LuaValue::Bool(false)),
     ]);
-    assert_eq!(cxt.size(), 0);
+    assert_eq!(ctx.size(), 0);
 }
 
 #[test]
 fn from_map() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
     let mut map = HashMap::new();
     map.insert("foo", 5);
     map.insert("bar", 10);
-    let table = Table::from_map(&cxt, &map);
+    let table = Table::from_map(&ctx, &map);
 
-    assert_eq!(cxt.size(), 0);
+    assert_eq!(ctx.size(), 0);
 
     // assert_eq!(table.len(), 2);
 
@@ -232,12 +232,12 @@ fn from_map() {
 
 #[test]
 fn from_vec() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
     let vec = vec![2, 4, 6, 8];
-    let table = Table::from_vec(&cxt, &vec);
+    let table = Table::from_vec(&ctx, &vec);
 
-    assert_eq!(cxt.size(), 0);
+    assert_eq!(ctx.size(), 0);
     assert_eq!(table.len(), 4);
 
     assert_eq!(table.get::<i32, _>(1), 2);

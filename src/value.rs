@@ -22,17 +22,17 @@ pub enum LuaValue<'a> {
 }
 
 impl<'a> Read<'a> for LuaValue<'a> {
-    fn read(cxt: &'a Context, idx: i32) -> Self {
+    fn read(ctx: &'a Context, idx: i32) -> Self {
         unsafe {
-            match ffi::lua_type(cxt.handle, idx) {
+            match ffi::lua_type(ctx.handle, idx) {
                 ffi::LUA_TNONE => LuaValue::None,
                 ffi::LUA_TNIL => LuaValue::Nil,
-                ffi::LUA_TBOOLEAN => LuaValue::Bool(bool::read(cxt, idx)),
+                ffi::LUA_TBOOLEAN => LuaValue::Bool(bool::read(ctx, idx)),
                 ffi::LUA_TLIGHTUSERDATA => unimplemented!(),
-                ffi::LUA_TNUMBER => LuaValue::Number(f64::read(cxt, idx)),
-                ffi::LUA_TSTRING => LuaValue::String(<&str>::read(cxt, idx)),
-                ffi::LUA_TTABLE => LuaValue::Table(Table { cxt: cxt, ptr: <LuaRef>::read(cxt, idx) }),
-                ffi::LUA_TFUNCTION => LuaValue::Function(Function::read(cxt, idx)),
+                ffi::LUA_TNUMBER => LuaValue::Number(f64::read(ctx, idx)),
+                ffi::LUA_TSTRING => LuaValue::String(<&str>::read(ctx, idx)),
+                ffi::LUA_TTABLE => LuaValue::Table(Table { ctx: ctx, ptr: <LuaRef>::read(ctx, idx) }),
+                ffi::LUA_TFUNCTION => LuaValue::Function(Function::read(ctx, idx)),
                 ffi::LUA_TUSERDATA => unimplemented!(),
                 ffi::LUA_TTHREAD => unimplemented!(),
                 _ => panic!("yahallo"),
@@ -40,7 +40,7 @@ impl<'a> Read<'a> for LuaValue<'a> {
         }
     }
 
-    fn check(cxt: &'a Context, idx: i32) -> bool {
+    fn check(ctx: &'a Context, idx: i32) -> bool {
         true
     }
 }
@@ -53,12 +53,12 @@ impl<'a> Size for LuaValue<'a> {
 
 #[test]
 fn read_value() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
-    cxt.push((nil, 45f32, "Hello world!"));
+    ctx.push((nil, 45f32, "Hello world!"));
 
-    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Nil);
-    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::Number(45f64));
-    assert_eq!(cxt.remove::<LuaValue>(1), LuaValue::String("Hello world!"));
+    assert_eq!(ctx.remove::<LuaValue>(1), LuaValue::Nil);
+    assert_eq!(ctx.remove::<LuaValue>(1), LuaValue::Number(45f64));
+    assert_eq!(ctx.remove::<LuaValue>(1), LuaValue::String("Hello world!"));
 }
 

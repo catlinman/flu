@@ -41,9 +41,9 @@ pub struct nil;
 
 #[macro_export]
 macro_rules! push {
-    ($cxt:expr, $($arg:expr),*) => (
+    ($ctx:expr, $($arg:expr),*) => (
         $(
-            $cxt.push($arg);
+            $ctx.push($arg);
         )*
     )
 }

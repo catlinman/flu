@@ -169,25 +169,25 @@ impl Drop for Context {
 
 #[test]
 fn get_globals() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
-    cxt.set("foo", 1.32f32);
-    cxt.set("bar", "quux");
+    ctx.set("foo", 1.32f32);
+    ctx.set("bar", "quux");
 
-    assert_eq!(cxt.size(), 0);
+    assert_eq!(ctx.size(), 0);
 
-    assert_eq!(cxt.get::<f32>("foo"), 1.32f32);
-    assert_eq!(cxt.get::<String>("bar"), "quux");
+    assert_eq!(ctx.get::<f32>("foo"), 1.32f32);
+    assert_eq!(ctx.get::<String>("bar"), "quux");
 
-    assert_eq!(cxt.size(), 0);
+    assert_eq!(ctx.size(), 0);
 }
 
 #[test]
 fn stack_size() {
-    let cxt = Context::new();
+    let ctx = Context::new();
 
-    cxt.push((true, false, true, false));
+    ctx.push((true, false, true, false));
 
-    assert_eq!(cxt.size(), 4);
+    assert_eq!(ctx.size(), 4);
 }
 
